@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: univelt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: univelt
+      POSTGRES_PASSWORD: univelt
+      POSTGRES_DB: univelt
+    ports:
+      - "5432:5432"
+    volumes:
+      - univelt_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U univelt -d univelt"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  univelt_pgdata:

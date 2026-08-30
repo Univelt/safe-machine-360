@@ -1,0 +1,436 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  CLIENT_ADMIN
+  CLIENT_MANAGER
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  INACTIVE
+}
+
+enum CompanyStatus {
+  ACTIVE
+  DEMO
+  INACTIVE
+}
+
+enum MachineStatus {
+  OPERACIONAL
+  EM_MANUTENCAO
+  INTERDITADA
+}
+
+enum RiskLevel {
+  MUITO_BAIXO
+  BAIXO
+  SIGNIFICATIVO
+  ALTO
+  MUITO_ALTO
+}
+
+enum SafetyCategory {
+  B
+  CAT_1
+  CAT_2
+  CAT_3
+  CAT_4
+}
+
+enum PhotoKind {
+  FRONT
+  BACK
+  LEFT
+  RIGHT
+  ELECTRICAL_PANEL
+  ID_PLATE
+  OTHER
+}
+
+enum DocumentKind {
+  APRECIACAO_RISCO
+  CHECKLIST_SEGURANCA
+  CHECKLIST_MANUTENCAO
+  MANUAL
+  LAUDO
+  ART
+  APR
+  OUTRO
+}
+
+enum DocumentStatus {
+  VALIDO
+  A_VENCER
+  VENCIDO
+  SEM_VALIDADE
+}
+
+enum ActivityStatus {
+  ABERTA
+  EM_ANDAMENTO
+  CONCLUIDA
+  ATRASADA
+}
+
+enum ActivityPriority {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum ChecklistAnswer {
+  SIM
+  NAO
+  PARCIAL
+  NA
+}
+
+enum ActionItemStatus {
+  ABERTA
+  EM_ANDAMENTO
+  CONCLUIDA
+}
+
+model Company {
+  id        String        @id @default(cuid())
+  name      String
+  legalName String
+  cnpj      String        @unique
+  city      String
+  manager   String
+  status    CompanyStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  units            Unit[]
+  users            User[]
+  machines         Machine[]
+  documents        Document[]
+  activities       Activity[]
+  riskAssessments  RiskAssessment[]
+  checklists       ChecklistExecution[]
+  checklistTemplates ChecklistTemplate[]
+  actionPlans      ActionPlan[]
+  auditLogs        AuditLog[]
+  snapshots        ComplianceSnapshot[]
+
+  @@index([status])
+}
+
+model Unit {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  city      String
+  createdAt DateTime @default(now())
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users    User[]
+  machines Machine[]
+
+  @@index([companyId])
+}
+
+model User {
+  id           String     @id @default(cuid())
+  companyId    String?
+  unitId       String?
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         UserRole
+  status       UserStatus @default(ACTIVE)
+  lastAccessAt DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  company   Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  unit      Unit?      @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  auditLogs AuditLog[]
+
+  @@index([companyId])
+  @@index([role])
+}
+
+model Machine {
+  id                     String         @id @default(cuid())
+  companyId              String
+  unitId                 String
+  code                   String
+  name                   String
+  tag                    String
+  serial                 String
+  assetTag               String?
+  machineType            String?
+  manufacturer           String
+  model                  String
+  year                   Int
+  sector                 String
+  area                   String
+  capacity               String?
+  category               SafetyCategory?
+  hrnCurrent             Int
+  hrnResidual            Int?
+  riskLevel              RiskLevel
+  energySources          String
+  mainSystems            String?
+  usage                  String?
+  processCharacteristics String?
+  operatorCount          Int?
+  operatorSkills         String?
+  mechMaintenanceCount   Int?
+  mechMaintenanceSkills  String?
+  elecMaintenanceCount   Int?
+  elecMaintenanceSkills  String?
+  equipmentLimits        String?
+  observations           String?
+  documentNumber         String?
+  documentRevision       String?
+  status                 MachineStatus  @default(OPERACIONAL)
+  description            String
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit            Unit                 @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  photos          MachinePhoto[]
+  documents       Document[]
+  activities      Activity[]
+  riskAssessments RiskAssessment[]
+  checklists      ChecklistExecution[]
+  actionPlans     ActionPlan[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([unitId])
+  @@index([riskLevel])
+  @@index([status])
+}
+
+model MachinePhoto {
+  id        String    @id @default(cuid())
+  machineId String
+  kind      PhotoKind
+  url       String?
+  caption   String
+  createdAt DateTime  @default(now())
+
+  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([machineId])
+}
+
+model Document {
+  id             String         @id @default(cuid())
+  companyId      String
+  machineId      String
+  name           String
+  type           DocumentKind
+  version        String
+  issueDate      DateTime
+  expirationDate DateTime?
+  responsible    String
+  format         String         @default("PDF")
+  size           String?
+  description    String
+  fileUrl        String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([machineId])
+  @@index([expirationDate])
+}
+
+model RiskAssessment {
+  id              String          @id @default(cuid())
+  companyId       String
+  machineId       String
+  documentNumber  String
+  revision        String
+  category        SafetyCategory
+  hrnCurrent      Int
+  hrnResidual     Int
+  riskLevel       RiskLevel
+  issuedAt        DateTime
+  expiresAt       DateTime?
+  notes           String?
+  fileUrl         String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([machineId])
+}
+
+model ChecklistTemplate {
+  id          String   @id @default(cuid())
+  companyId   String?
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company    Company?                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items      ChecklistTemplateItem[]
+  executions ChecklistExecution[]
+
+  @@index([companyId])
+}
+
+model ChecklistTemplateItem {
+  id         String @id @default(cuid())
+  templateId String
+  number     Int
+  description String
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  answers  ChecklistItemAnswer[]
+
+  @@unique([templateId, number])
+}
+
+model ChecklistExecution {
+  id         String   @id @default(cuid())
+  companyId  String
+  machineId  String
+  templateId String
+  executedAt DateTime @default(now())
+  executedBy String
+  notes      String?
+
+  company  Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machine  Machine           @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  answers  ChecklistItemAnswer[]
+
+  @@index([companyId])
+  @@index([machineId])
+}
+
+model ChecklistItemAnswer {
+  id          String          @id @default(cuid())
+  executionId String
+  itemId      String
+  result      ChecklistAnswer
+
+  execution ChecklistExecution    @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  item      ChecklistTemplateItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@unique([executionId, itemId])
+}
+
+model Activity {
+  id               String           @id @default(cuid())
+  companyId        String
+  machineId        String
+  title            String
+  type             String
+  description      String
+  responsible      String
+  responsibleEmail String?
+  createdOn        DateTime         @default(now())
+  dueDate          DateTime
+  executedAt       DateTime?
+  status           ActivityStatus   @default(ABERTA)
+  priority         ActivityPriority @default(MEDIA)
+  progress         Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machine     Machine              @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  attachments ActivityAttachment[]
+
+  @@index([companyId])
+  @@index([machineId])
+  @@index([status])
+}
+
+model ActivityAttachment {
+  id         String   @id @default(cuid())
+  activityId String
+  name       String
+  kind       String
+  url        String?
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+}
+
+model ActionPlan {
+  id        String   @id @default(cuid())
+  companyId String
+  machineId String
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machine Machine          @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  items   ActionPlanItem[]
+
+  @@index([companyId])
+  @@index([machineId])
+}
+
+model ActionPlanItem {
+  id             String           @id @default(cuid())
+  actionPlanId   String
+  sequence       Int
+  location       String
+  nonconformity  String
+  action         String
+  reference      String?
+  responsible    String
+  status         ActionItemStatus @default(ABERTA)
+
+  actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String?
+  userId    String?
+  action    String
+  entity    String
+  entityId  String
+  summary   String
+  createdAt DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([entity, entityId])
+}
+
+model ComplianceSnapshot {
+  id          String   @id @default(cuid())
+  companyId   String
+  month       String
+  score       Int
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, month])
+}
