@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -21,7 +21,6 @@ export function LoginForm() {
     register,
     handleSubmit,
     setError,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -85,25 +84,8 @@ export function LoginForm() {
         </button>
       </form>
 
-      <div className="access-hint-grid">
-        <button type="button" className="demo-access-card" onClick={() => { setValue("email", "admin@univelt.com.br", { shouldValidate: true }); setValue("password", "Univelt@Admin2026", { shouldValidate: true }); }}>
-          <div className="demo-access-title"><ShieldCheck size={17} /><span><strong>Acesso Univelt</strong><small>Vê todas as empresas e máquinas</small></span></div>
-          <dl>
-            <div><dt>Login</dt><dd>admin@univelt.com.br</dd></div>
-            <div><dt>Senha</dt><dd>Univelt@Admin2026</dd></div>
-          </dl>
-        </button>
-        <button type="button" className="demo-access-card" onClick={() => { setValue("email", "fernanda@industriadelta.com.br", { shouldValidate: true }); setValue("password", "Univelt@Cliente2026", { shouldValidate: true }); }}>
-          <div className="demo-access-title"><Building2 size={17} /><span><strong>Acesso cliente</strong><small>Somente a Indústria Delta</small></span></div>
-          <dl>
-            <div><dt>Login</dt><dd>fernanda@industriadelta.com.br</dd></div>
-            <div><dt>Senha</dt><dd>Univelt@Cliente2026</dd></div>
-          </dl>
-        </button>
-      </div>
-
       <p className="login-help">Problemas para acessar? <Link href="mailto:suporte@univelt.com.br">Fale com o suporte</Link></p>
-      <div className="login-security"><KeyRound size={16} /> Senhas iniciais do seed local. Troque-as antes de produção.</div>
+      <div className="login-security"><KeyRound size={16} /> Use as credenciais cadastradas no banco do ambiente atual.</div>
     </div>
   );
 }
