@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardCheck, Plus } from "lucide-react";
+import { ChevronRight, ClipboardCheck, Plus } from "lucide-react";
 import { AuthenticatedShell } from "../../components/authenticated-shell";
 import { requireClient } from "@/lib/auth/guards";
 import { canMutateOperations } from "@/lib/auth/session";
@@ -14,7 +14,8 @@ export default async function ChecklistsPage() {
   const canCreate = canMutateOperations(session);
   return (
     <AuthenticatedShell variant="client">
-      <div className="dashboard admin-list-page">
+      <div className="dashboard checklists-page">
+        <div className="breadcrumb"><span>{session.companyName ?? "Empresa"}</span><ChevronRight size={14} /><strong>Checklists</strong></div>
         <section className="page-heading">
           <div>
             <span className="eyebrow">Catálogo NR-12</span>
@@ -23,25 +24,27 @@ export default async function ChecklistsPage() {
           </div>
           {canCreate && <Link className="button primary" href="/cliente/checklists/novo"><Plus size={16} /> Novo checklist</Link>}
         </section>
-        <section className="admin-company-grid">
-          {templates.length === 0 && <p className="empty-copy">Nenhum checklist cadastrado. Crie o primeiro modelo para começar a preencher nas máquinas.</p>}
+        <section className="panel checklist-catalog">
+          {templates.length === 0 && (
+            <div className="machine-empty">
+              <ClipboardCheck size={28} />
+              <strong>Nenhum checklist cadastrado</strong>
+              <p>Crie o primeiro modelo para começar a preencher nas máquinas.</p>
+            </div>
+          )}
           {templates.map((template) => (
-            <article className="panel admin-company-card" key={template.id}>
-              <header>
-                <span className="admin-company-avatar"><ClipboardCheck size={19} /></span>
-                <div>
-                  <strong>{template.name}</strong>
-                  <small>{template.company?.name ?? "Catálogo global Univelt"}</small>
-                </div>
-              </header>
-              <p className="empty-copy">{template.description || "Sem descrição."}</p>
+            <article className="checklist-catalog-row" key={template.id}>
+              <span className="checklist-catalog-icon"><ClipboardCheck size={20} /></span>
+              <div>
+                <strong>{template.name}</strong>
+                <p>{template.description || "Sem descrição."}</p>
+                <small>{template.company?.name ?? "Catálogo global Univelt"}</small>
+              </div>
               <dl>
                 <div><dt>Itens</dt><dd>{template._count.items}</dd></div>
                 <div><dt>Preenchimentos</dt><dd>{template._count.executions}</dd></div>
               </dl>
-              <footer>
-                <Link className="button secondary" href={`/cliente/checklists/${template.id}`}>Abrir itens</Link>
-              </footer>
+              <Link className="button secondary" href={`/cliente/checklists/${template.id}`}>Abrir itens</Link>
             </article>
           ))}
         </section>

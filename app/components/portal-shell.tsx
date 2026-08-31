@@ -59,6 +59,7 @@ type PortalShellProps = {
 
 export function PortalShell({ children, variant = "admin", session }: PortalShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [menuUser, setMenuUser] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -66,11 +67,36 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
   const navigation = isClient ? clientNavigation : adminNavigation;
 
   useEffect(() => {
+    setCollapsed(window.localStorage.getItem("univelt-sidebar-collapsed") === "1");
+  }, []);
+
+  useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 920px)");
+    function onChange() {
+      if (!media.matches) setMenuOpen(false);
+    }
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  function toggleSidebar() {
+    if (window.matchMedia("(max-width: 920px)").matches) {
+      setMenuOpen((open) => !open);
+      return;
+    }
+    setCollapsed((value) => {
+      const next = !value;
+      window.localStorage.setItem("univelt-sidebar-collapsed", next ? "1" : "0");
+      return next;
+    });
+  }
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -82,9 +108,9 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
 
-      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} aria-label="Navegação principal">
+      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""} ${collapsed ? "sidebar-collapsed" : ""}`} aria-label="Navegação principal">
         <div className="sidebar-head">
-          <Brand />
+          <Brand compact={collapsed} />
           <button className="icon-button sidebar-close" type="button" onClick={() => setMenuOpen(false)} aria-label="Fechar menu">
             <X size={20} />
           </button>
@@ -116,6 +142,7 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
                   href={item.href}
                   className={`nav-item ${active ? "active" : ""}`}
                   aria-current={active ? "page" : undefined}
+                  title={item.label}
                   onClick={() => setMenuOpen(false)}
                 >
                   <Icon size={19} strokeWidth={1.8} />
@@ -140,10 +167,16 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
 
       {menuOpen && <button className="sidebar-scrim" type="button" aria-label="Fechar menu" onClick={() => setMenuOpen(false)} />}
 
-      <div className="main-column">
+      <div className={`main-column ${collapsed ? "sidebar-is-collapsed" : ""}`}>
         <header className="topbar">
           <div className="topbar-left">
-            <button className="icon-button mobile-menu" type="button" onClick={() => setMenuOpen(true)} aria-label="Abrir menu">
+            <button
+              className="icon-button mobile-menu"
+              type="button"
+              onClick={toggleSidebar}
+              aria-label={menuOpen || collapsed ? "Expandir menu" : "Recolher menu"}
+              aria-expanded={menuOpen || !collapsed}
+            >
               <Menu size={21} />
             </button>
             <div className="global-search">

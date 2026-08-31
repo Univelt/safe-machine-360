@@ -28,23 +28,21 @@ export default async function ChooseChecklistPage({ params }: { params: Promise<
             <Link className="button primary" href="/cliente/checklists/novo">Cadastrar checklist</Link>
           </div>
         </section>
-        <section className="admin-company-grid">
-          {templates.length === 0 && <p className="empty-copy">Nenhum checklist cadastrado ainda. Crie um modelo para preenchê-lo nesta máquina.</p>}
+        <section className="panel checklist-catalog">
+          {templates.length === 0 && <p className="empty-copy checklist-empty">Nenhum checklist cadastrado ainda. Crie um modelo para preenchê-lo nesta máquina.</p>}
           {templates.map((template) => (
-            <article className="panel admin-company-card" key={template.id}>
-              <header>
-                <span className="admin-company-avatar"><ClipboardCheck size={19} /></span>
-                <div>
-                  <strong>{template.name}</strong>
-                  <small>{template._count.items} itens</small>
-                </div>
-              </header>
-              <p className="empty-copy">{template.description || "Itens vindos do cadastro do checklist."}</p>
-              <footer>
-                {template._count.items > 0
-                  ? <Link className="button primary" href={`/cliente/maquinas/${machine.id}/checklist/${template.id}`}>Preencher</Link>
-                  : <Link className="button secondary" href={`/cliente/checklists/${template.id}`}>Adicionar itens</Link>}
-              </footer>
+            <article className="checklist-catalog-row" key={template.id}>
+              <span className="checklist-catalog-icon"><ClipboardCheck size={20} /></span>
+              <div>
+                <strong>{template.name}</strong>
+                <p>{template.description || "Itens vindos do cadastro do checklist."}</p>
+              </div>
+              <dl>
+                <div><dt>Itens</dt><dd>{template._count.items}</dd></div>
+              </dl>
+              {template._count.items > 0
+                ? <Link className="button primary" href={`/cliente/maquinas/${machine.id}/checklist/${template.id}`}>Preencher</Link>
+                : <Link className="button secondary" href={`/cliente/checklists/${template.id}`}>Adicionar itens</Link>}
             </article>
           ))}
         </section>

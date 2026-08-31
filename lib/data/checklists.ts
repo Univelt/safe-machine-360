@@ -1,6 +1,8 @@
 import type { SessionUser } from "@/lib/auth/session";
 import { isSuperAdmin } from "@/lib/auth/session";
+import { formatDateTime } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
+import { getLastChange } from "./audit";
 
 export function checklistCatalogFilter(session: SessionUser) {
   if (isSuperAdmin(session)) return {};
@@ -23,11 +25,21 @@ export async function listChecklistTemplates(session: SessionUser) {
 }
 
 export async function getChecklistTemplate(session: SessionUser, id: string) {
-  return prisma.checklistTemplate.findFirst({
+  const template = await prisma.checklistTemplate.findFirst({
     where: { id, ...checklistCatalogFilter(session) },
     include: {
       company: { select: { name: true } },
       items: { orderBy: { number: "asc" } },
+      _count: { select: { executions: true, items: true } },
     },
   });
+  if (!template) return null;
+  const lastChange = await getLastChange(["ChecklistTemplate", "ChecklistTemplateItem"], template.id);
+  return {
+    ...template,
+    lastChange: lastChange ?? {
+      at: formatDateTime(template.updatedAt),
+      by: template.company?.name ?? "Portal Univelt",
+    },
+  };
 }

@@ -382,9 +382,15 @@ export async function addChecklistItemAction(formData: FormData) {
     throw new Error("Sem permissão.");
   }
   const nextNumber = template.items.reduce((max, item) => Math.max(max, item.number), 0) + 1;
-  await prisma.checklistTemplateItem.create({
-    data: { templateId: template.id, number: nextNumber, description },
-  });
+  await prisma.$transaction([
+    prisma.checklistTemplateItem.create({
+      data: { templateId: template.id, number: nextNumber, description },
+    }),
+    prisma.checklistTemplate.update({
+      where: { id: template.id },
+      data: { updatedAt: new Date() },
+    }),
+  ]);
   await writeAudit(template.companyId, session.id, "CHECKLIST_ITEM_ADDED", "ChecklistTemplateItem", template.id, `Item ${nextNumber} incluído em ${template.name}.`);
   revalidatePath(`/cliente/checklists/${template.id}`);
   revalidatePath("/cliente/checklists");

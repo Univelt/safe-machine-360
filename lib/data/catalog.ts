@@ -1,6 +1,7 @@
 import type { SessionUser } from "@/lib/auth/session";
-import { computeDocumentStatus, documentKindLabels, documentStatusLabels, formatDate } from "@/lib/labels";
+import { computeDocumentStatus, documentKindLabels, documentStatusLabels, formatDate, formatDateTime } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
+import { getLastChange } from "./audit";
 import { companyFilter } from "./scope";
 
 export async function listDocuments(session: SessionUser) {
@@ -72,12 +73,23 @@ export async function listActivities(session: SessionUser) {
       kind: attachment.kind,
       url: attachment.url ? `/api/activities/${activity.id}/attachments/${attachment.id}/file` : null,
     })),
+    lastChange: null as { at: string; by: string } | null,
   }));
 }
 
 export async function getActivity(session: SessionUser, id: string) {
   const activities = await listActivities(session);
-  return activities.find((activity) => activity.id === id) ?? null;
+  const activity = activities.find((item) => item.id === id) ?? null;
+  if (!activity) return null;
+  const lastChange = await getLastChange("Activity", id);
+  if (lastChange) return { ...activity, lastChange: { at: lastChange.at, by: lastChange.by } };
+  const record = await prisma.activity.findUnique({ where: { id }, select: { updatedAt: true, responsible: true } });
+  return {
+    ...activity,
+    lastChange: record
+      ? { at: formatDateTime(record.updatedAt), by: record.responsible || "Portal Univelt" }
+      : null,
+  };
 }
 
 export async function companyMetrics(session: SessionUser) {

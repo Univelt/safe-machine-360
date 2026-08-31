@@ -2,7 +2,7 @@ import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Download, His
 import Link from "next/link";
 import { MachinePhotos } from "./machine-photos";
 import type { MachineView } from "@/lib/data/types";
-import { categoryLabels, documentStatusLabels, documentTone, formatDate } from "@/lib/labels";
+import { categoryLabels, checklistAnswerLabels, checklistAnswerTones, documentStatusLabels, documentTone, formatDate, formatDateTime } from "@/lib/labels";
 
 export function MachineDetails({ machine, canMutate }: { machine: MachineView; canMutate: boolean }) {
   const latestApr = machine.riskAssessments[0];
@@ -30,7 +30,7 @@ export function MachineDetails({ machine, canMutate }: { machine: MachineView; c
             <div><dt>Tipo</dt><dd>{machine.machineType ?? "—"}</dd></div>
             <div><dt>Fabricante</dt><dd>{machine.manufacturer}</dd></div>
             <div><dt>Modelo</dt><dd>{machine.model}</dd></div>
-            <div><dt>Ano</dt><dd>{machine.year}</dd></div>
+            <div><dt>Ano</dt><dd>{machine.year || "Não identificado"}</dd></div>
             <div><dt>Capacidade</dt><dd>{machine.capacity ?? "—"}</dd></div>
             <div><dt>Documento</dt><dd>{machine.documentNumber ?? "—"}</dd></div>
             <div><dt>Revisão</dt><dd>{machine.documentRevision ?? "—"}</dd></div>
@@ -39,60 +39,81 @@ export function MachineDetails({ machine, canMutate }: { machine: MachineView; c
           <MachinePhotos machine={machine} canMutate={canMutate} />
 
           <section className="panel detail-section" id="documentos"><div className="panel-header"><div><span className="panel-kicker">Controle documental</span><h2>Documentos vinculados à máquina</h2></div>{canMutate && <Link className="text-button" href={`/cliente/documentos/novo?machineId=${machine.id}`}>Anexar <ChevronRight size={16} /></Link>}</div>
-            <div className="document-list">
-              {machine.documents.length === 0 && <p className="empty-copy">Nenhum documento vinculado.</p>}
-              {machine.documents.map((document) => (
-                <article key={document.id}><span className={`document-file-icon ${documentTone(document.status)}`}><ShieldAlert size={19} /></span><div><strong>{document.name}</strong><small>{document.type} · Versão {document.version} · {document.size}</small></div><span><strong>{documentStatusLabels[document.status]}</strong><small>Validade: {document.expirationDate}</small></span><Link className="icon-button" href={`/cliente/documentos/${document.id}`} aria-label="Abrir documento"><Download size={17} /></Link></article>
-              ))}
+            <div className="machine-section-body">
+              <div className="document-list">
+                {machine.documents.length === 0 && <p className="empty-copy">Nenhum documento vinculado.</p>}
+                {machine.documents.map((document) => (
+                  <article key={document.id}><span className={`document-file-icon ${documentTone(document.status)}`}><ShieldAlert size={19} /></span><div><strong>{document.name}</strong><small>{document.type} · Versão {document.version} · {document.size}</small></div><span><strong>{documentStatusLabels[document.status]}</strong><small>Validade: {document.expirationDate}</small></span><Link className="icon-button" href={`/cliente/documentos/${document.id}`} aria-label="Abrir documento"><Download size={17} /></Link></article>
+                ))}
+              </div>
             </div>
           </section>
 
           <section className="panel detail-section" id="apr">
             <div className="panel-header"><div><span className="panel-kicker">Análise de risco</span><h2>APR da máquina</h2></div>{canMutate && <Link className="text-button" href={`/cliente/maquinas/${machine.id}/apr`}>Nova APR <ChevronRight size={16} /></Link>}</div>
-            {latestApr ? (
-              <dl className="spec-grid">
-                <div><dt>Número do documento</dt><dd>{latestApr.documentNumber}</dd></div>
-                <div><dt>Revisão</dt><dd>{latestApr.revision}</dd></div>
-                <div><dt>Categoria</dt><dd>{categoryLabels[latestApr.category]}</dd></div>
-                <div><dt>HRN atual</dt><dd>{latestApr.hrnCurrent}</dd></div>
-                <div><dt>HRN residual</dt><dd>{latestApr.hrnResidual}</dd></div>
-                <div><dt>Emissão</dt><dd>{formatDate(latestApr.issuedAt)}</dd></div>
-              </dl>
-            ) : <p className="empty-copy">Nenhuma APR cadastrada.</p>}
+            <div className="machine-section-body">
+              {latestApr ? (
+                <dl>
+                  <div><dt>Número do documento</dt><dd>{latestApr.documentNumber}</dd></div>
+                  <div><dt>Revisão</dt><dd>{latestApr.revision}</dd></div>
+                  <div><dt>Categoria</dt><dd>{categoryLabels[latestApr.category]}</dd></div>
+                  <div><dt>HRN atual</dt><dd>{latestApr.hrnCurrent}</dd></div>
+                  <div><dt>HRN residual</dt><dd>{latestApr.hrnResidual}</dd></div>
+                  <div><dt>Emissão</dt><dd>{formatDate(latestApr.issuedAt)}</dd></div>
+                </dl>
+              ) : <p className="empty-copy">Nenhuma APR cadastrada.</p>}
+            </div>
           </section>
 
           <section className="panel detail-section" id="checklist">
             <div className="panel-header"><div><span className="panel-kicker">Checklist NR-12</span><h2>Itens cadastrados no banco</h2></div>{canMutate && <Link className="text-button" href={`/cliente/maquinas/${machine.id}/checklist`}>Preencher checklist <ChevronRight size={16} /></Link>}</div>
-            {machine.checklists.length === 0 && <p className="empty-copy">Nenhum checklist preenchido nesta máquina.</p>}
-            {machine.checklists.map((execution) => (
-              <div className="checklist-table" key={execution.id}>
-                <header><span>Item</span><span>{execution.template.name}</span><span>Disponível e operante</span></header>
-                {execution.answers.sort((a, b) => a.item.number - b.item.number).map((answer) => (
-                  <div key={answer.id}><span>{answer.item.number}</span><span>{answer.item.description}</span><strong>{answer.result}</strong></div>
-                ))}
-                <p className="log-line">Log: executado em {formatDate(execution.executedAt)} por {execution.executedBy}.</p>
-              </div>
-            ))}
+            <div className="machine-section-body">
+              {machine.checklists.length === 0 && <p className="empty-copy">Nenhum checklist preenchido nesta máquina.</p>}
+              {machine.checklists.map((execution) => (
+                <div className="checklist-execution" key={execution.id}>
+                  <header>
+                    <strong>{execution.template.name}</strong>
+                    <small>{formatDateTime(execution.executedAt)} · {execution.executedBy}</small>
+                  </header>
+                  <ol className="checklist-item-list compact fill">
+                    {execution.answers.sort((a, b) => a.item.number - b.item.number).map((answer) => (
+                      <li key={answer.id}>
+                        <span className="checklist-num">{answer.item.number}</span>
+                        <p>{answer.item.description}</p>
+                        <span className={`answer-pill ${checklistAnswerTones[answer.result]}`}>{checklistAnswerLabels[answer.result]}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="change-log">Log: última execução em <strong>{formatDateTime(execution.executedAt)}</strong> por <strong>{execution.executedBy}</strong>.</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="panel detail-section" id="plano">
             <div className="panel-header"><div><span className="panel-kicker">Plano de ação NR-12</span><h2>{latestPlan?.title ?? "Ações corretivas"}</h2></div>{canMutate && <Link className="text-button" href={`/cliente/maquinas/${machine.id}/plano`}>Novo plano <ChevronRight size={16} /></Link>}</div>
-            {latestPlan ? (
-              <div className="action-table">
-                <header><span>N</span><span>Local</span><span>Não conformidade</span><span>Ação</span><span>Responsável</span></header>
-                {latestPlan.items.map((item) => (
-                  <div key={item.id}><span>{item.sequence}</span><span>{item.location}</span><span>{item.nonconformity}</span><span>{item.action}</span><strong>{item.responsible}</strong></div>
-                ))}
-              </div>
-            ) : <p className="empty-copy">Nenhum plano de ação cadastrado.</p>}
+            <div className="machine-section-body">
+              {latestPlan ? (
+                <div className="action-table">
+                  <header><span>N</span><span>Local</span><span>Não conformidade</span><span>Ação</span><span>Responsável</span></header>
+                  {latestPlan.items.map((item) => (
+                    <div key={item.id}><span>{item.sequence}</span><span>{item.location}</span><span>{item.nonconformity}</span><span>{item.action}</span><strong>{item.responsible}</strong></div>
+                  ))}
+                </div>
+              ) : <p className="empty-copy">Nenhum plano de ação cadastrado.</p>}
+            </div>
           </section>
 
-          <section className="panel detail-section" id="atividades"><div className="panel-header"><div><span className="panel-kicker">Acompanhamento</span><h2>Atividades da máquina</h2></div></div><div className="machine-timeline">
-            {machine.activities.length === 0 && <p className="empty-copy">Nenhuma atividade vinculada.</p>}
-            {machine.activities.map((activity) => (
-              <div key={activity.id}><span className={`timeline-dot ${activity.status === "CONCLUIDA" ? "completed" : "pending"}`}>{activity.status === "CONCLUIDA" ? <CheckCircle2 size={15} /> : <CalendarClock size={15} />}</span><article><strong>{activity.title}</strong><p>{activity.responsible} · prazo {formatDate(activity.dueDate)}</p><small>{activity.responsibleEmail ?? "Sem e-mail cadastrado"}</small></article></div>
-            ))}
-          </div></section>
+          <section className="panel detail-section" id="atividades"><div className="panel-header"><div><span className="panel-kicker">Acompanhamento</span><h2>Atividades da máquina</h2></div></div>
+            <div className="machine-section-body">
+              <div className="machine-timeline">
+                {machine.activities.length === 0 && <p className="empty-copy">Nenhuma atividade vinculada.</p>}
+                {machine.activities.map((activity) => (
+                  <div key={activity.id}><span className={`timeline-dot ${activity.status === "CONCLUIDA" ? "completed" : "pending"}`}>{activity.status === "CONCLUIDA" ? <CheckCircle2 size={15} /> : <CalendarClock size={15} />}</span><article><strong>{activity.title}</strong><p>{activity.responsible} · prazo {formatDate(activity.dueDate)}</p><small>{activity.responsibleEmail ?? "Sem e-mail cadastrado"}</small></article></div>
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
 
         <aside className="detail-side-column">

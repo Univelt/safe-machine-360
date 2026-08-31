@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ChevronRight, ClipboardCheck } from "lucide-react";
 import { AuthenticatedShell } from "../../../../../components/authenticated-shell";
 import { createChecklistAction } from "@/app/actions/records";
 import { requireClient } from "@/lib/auth/guards";
@@ -19,30 +20,62 @@ export default async function FillChecklistPage({ params }: { params: Promise<{ 
   if (!machine || !template || template.items.length === 0) notFound();
   return (
     <AuthenticatedShell variant="client">
-      <div className="dashboard record-page">
-        <section className="page-heading">
+      <div className="dashboard checklist-detail-page">
+        <div className="breadcrumb">
+          <span>{machine.companyName}</span>
+          <ChevronRight size={14} />
+          <Link href={`/cliente/maquinas/${machine.id}`}>{machine.code}</Link>
+          <ChevronRight size={14} />
+          <strong>Checklist</strong>
+        </div>
+        <section className="checklist-hero">
+          <span className="checklist-hero-icon"><ClipboardCheck size={30} /></span>
           <div>
-            <span className="eyebrow">{machine.code}</span>
+            <div className="checklist-hero-labels">
+              <span className="document-type">{machine.code}</span>
+              <span className="doc-pill neutral">{template.items.length} itens</span>
+            </div>
             <h1>{template.name}</h1>
             <p>Itens carregados do banco. Cada resposta fica no histórico da máquina.</p>
           </div>
-          <Link className="button secondary" href={`/cliente/maquinas/${machine.id}/checklist`}>Trocar checklist</Link>
+          <div className="checklist-hero-actions">
+            <Link className="button secondary" href={`/cliente/maquinas/${machine.id}/checklist`}>Trocar checklist</Link>
+          </div>
         </section>
-        <form className="panel record-form" action={createChecklistAction}>
+        <form className="panel checklist-items-panel" action={createChecklistAction}>
           <input type="hidden" name="machineId" value={machine.id} />
           <input type="hidden" name="templateId" value={template.id} />
-          {template.items.map((item) => (
-            <label key={item.id} className="full">{item.number}. {item.description}
-              <select name={`item-${item.id}`} defaultValue="SIM">
-                <option value="SIM">SIM</option>
-                <option value="NAO">NÃO</option>
-                <option value="PARCIAL">PARCIAL</option>
-                <option value="NA">N/A</option>
-              </select>
-            </label>
-          ))}
-          <label className="full">Observações<textarea name="notes" rows={3} /></label>
-          <div className="form-actions"><button className="button primary" type="submit">Registrar checklist</button></div>
+          <div className="panel-header">
+            <div>
+              <span className="panel-kicker">Verificação</span>
+              <h2>Responda cada item</h2>
+            </div>
+            <small>{machine.name}</small>
+          </div>
+          <ol className="checklist-item-list fill">
+            {template.items.map((item) => (
+              <li key={item.id}>
+                <span className="checklist-num">{String(item.number).padStart(2, "0")}</span>
+                <p>{item.description}</p>
+                <label>
+                  <span className="sr-only">Resposta do item {item.number}</span>
+                  <select name={`item-${item.id}`} defaultValue="SIM">
+                    <option value="SIM">Sim</option>
+                    <option value="NAO">Não</option>
+                    <option value="PARCIAL">Parcial</option>
+                    <option value="NA">N/A</option>
+                  </select>
+                </label>
+              </li>
+            ))}
+          </ol>
+          <label className="checklist-notes">
+            Observações
+            <textarea name="notes" rows={3} placeholder="Registre restrições, pendências ou evidências desta verificação." />
+          </label>
+          <div className="form-actions checklist-fill-actions">
+            <button className="button primary" type="submit">Registrar checklist</button>
+          </div>
         </form>
       </div>
     </AuthenticatedShell>

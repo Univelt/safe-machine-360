@@ -3,10 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
-  serverExternalPackages: ["@prisma/client", "bcryptjs", "prisma"],
+  serverExternalPackages: ["@prisma/client", "bcryptjs", "prisma", "exceljs"],
   experimental: {
+    proxyClientMaxBodySize: "40mb",
     serverActions: {
-      bodySizeLimit: "25mb",
+      bodySizeLimit: "40mb",
     },
   },
   async headers() {

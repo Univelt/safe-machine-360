@@ -136,6 +136,7 @@ export type ActivityView = {
   progress: number;
   evidenceCount: number;
   attachments: Array<{ id: string; name: string; kind: string; url: string | null }>;
+  lastChange: { at: string; by: string } | null;
 };
 
 export type CompanyView = {

@@ -11,7 +11,7 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
   return (
     <section className="panel detail-section" id="fotos">
       <div className="panel-header"><div><span className="panel-kicker">Registro visual</span><h2>Fotos cadastradas</h2></div></div>
-      <div className="photo-gallery">
+      <div className="machine-section-body photo-gallery">
         {photos.map((photo) => (
           <article key={photo.id} className="photo-preview">
             <img src={photo.url ?? undefined} alt={photo.caption} />

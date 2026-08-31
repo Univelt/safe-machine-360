@@ -31,15 +31,15 @@ test("defines a PostgreSQL schema ready for RDS with tenant keys", async () => {
 });
 
 test("authenticates admin and company users on the server", async () => {
-  const [login, loginApi, middleware, session] = await Promise.all([
+  const [login, loginApi, middleware, session, seed] = await Promise.all([
     source("app/login/login-form.tsx"),
     source("app/api/auth/login/route.ts"),
     source("middleware.ts"),
     source("lib/auth/session.ts"),
+    source("prisma/seed.ts"),
   ]);
   assert.match(login, /\/api\/auth\/login/);
-  assert.match(login, /admin@univelt\.com\.br/);
-  assert.match(login, /fernanda@industriadelta\.com\.br/);
+  assert.match(seed, /admin@univelt\.com\.br/);
   assert.match(loginApi, /verifyPassword/);
   assert.match(loginApi, /SESSION_COOKIE/);
   assert.match(middleware, /SUPER_ADMIN/);
@@ -77,6 +77,30 @@ test("provides NR-12 machine cadastro, APR, checklist and action plan", async ()
   assert.match(plan, /Não conformidade/);
 });
 
+test("imports NR-12 machine spreadsheet with preview before saving", async () => {
+  const [parser, action, page, form, list, adminList] = await Promise.all([
+    source("lib/import/machine-import-map.ts"),
+    source("app/actions/machine-import.ts"),
+    source("app/cliente/maquinas/importar/page.tsx"),
+    source("app/cliente/maquinas/importar/machine-import-form.tsx"),
+    source("app/cliente/maquinas/machines-content.tsx"),
+    source("app/admin/maquinas/machines-admin-content.tsx"),
+  ]);
+  assert.match(parser, /classifyHeader/);
+  assert.match(parser, /parseRiskLevel/);
+  assert.match(parser, /hrnCurrent/);
+  assert.match(action, /previewMachineImportAction/);
+  assert.match(action, /confirmMachineImportAction/);
+  assert.match(action, /createMany/);
+  assert.match(page, /Importar planilha de máquinas/);
+  assert.match(form, /Analisar planilha/);
+  assert.match(form, /Confirmar cadastro/);
+  assert.match(list, /Importar planilha/);
+  assert.match(adminList, /Importar planilha/);
+  assert.match(list, /paginateItems/);
+  assert.match(adminList, /paginateItems/);
+});
+
 test("keeps client and Univelt administration separated", async () => {
   const [shell, clientPage, adminPage] = await Promise.all([
     source("app/components/portal-shell.tsx"),
@@ -90,17 +114,20 @@ test("keeps client and Univelt administration separated", async () => {
 });
 
 test("lets users add checklist models and items in the database", async () => {
-  const [catalog, createPage, editor, fillPage] = await Promise.all([
+  const [catalog, createPage, editor, fillPage, detail] = await Promise.all([
     source("app/cliente/checklists/page.tsx"),
     source("app/cliente/checklists/novo/page.tsx"),
     source("app/cliente/checklists/checklist-items-editor.tsx"),
     source("app/cliente/maquinas/[id]/checklist/[templateId]/page.tsx"),
+    source("app/cliente/checklists/[id]/page.tsx"),
   ]);
   assert.match(catalog, /Novo checklist/);
   assert.match(createPage, /createChecklistTemplateAction/);
   assert.match(editor, /Adicionar item/);
   assert.match(fillPage, /templateId/);
   assert.match(fillPage, /Itens carregados do banco/);
+  assert.match(detail, /ChangeLog/);
+  assert.match(detail, /Última alteração|ChangeLog/);
 });
 
 test("lets users upload photos on an existing machine", async () => {
@@ -119,16 +146,18 @@ test("lets users upload photos on an existing machine", async () => {
 });
 
 test("lets users attach evidence and update activity progress", async () => {
-  const [createPage, evidence, progress, action, api] = await Promise.all([
+  const [createPage, evidence, progress, details, action, api] = await Promise.all([
     source("app/cliente/atividades/nova/page.tsx"),
     source("app/cliente/atividades/[id]/activity-evidence.tsx"),
     source("app/cliente/atividades/[id]/activity-progress.tsx"),
+    source("app/cliente/atividades/[id]/activity-details.tsx"),
     source("app/actions/records.ts"),
     source("app/api/activities/[id]/attachments/[attachmentId]/file/route.ts"),
   ]);
   assert.match(createPage, /type="file"/);
   assert.match(evidence, /Anexar evidência/);
   assert.match(progress, /updateActivityProgressAction/);
+  assert.match(details, /ChangeLog/);
   assert.match(action, /uploadActivityEvidenceAction/);
   assert.match(action, /updateActivityProgressAction/);
   assert.match(api, /companyFilter/);

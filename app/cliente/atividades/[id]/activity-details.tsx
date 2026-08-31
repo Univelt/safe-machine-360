@@ -1,5 +1,6 @@
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, History, MessageSquareText, Paperclip, UserRound, Wrench } from "lucide-react";
 import Link from "next/link";
+import { ChangeLog } from "../../../components/change-log";
 import { ActivityEvidence } from "./activity-evidence";
 import { ActivityProgress } from "./activity-progress";
 import type { ActivityView } from "@/lib/data/types";
@@ -21,5 +22,6 @@ export function ActivityDetails({ activity, companyName, canMutate }: { activity
       <section className="machine-alert"><AlertTriangle size={19} /><div><strong>Isolamento</strong><p>Esta atividade pertence somente à empresa do equipamento vinculado.</p></div></section>
       <section className="history-link"><History size={17} /><span><strong>Registro auditável</strong><small>Alterações preservadas no histórico</small></span><ChevronRight size={17} /></section>
     </aside></div>
+    <ChangeLog at={activity.lastChange?.at} by={activity.lastChange?.by} />
   </div>;
 }

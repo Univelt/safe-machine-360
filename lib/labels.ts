@@ -1,4 +1,4 @@
-import type { ActivityPriority, ActivityStatus, DocumentKind, DocumentStatus, MachineStatus, RiskLevel, SafetyCategory, UserRole } from "@prisma/client";
+import type { ActivityPriority, ActivityStatus, ChecklistAnswer, DocumentKind, DocumentStatus, MachineStatus, RiskLevel, SafetyCategory, UserRole } from "@prisma/client";
 
 export const riskLabels: Record<RiskLevel, string> = {
   MUITO_BAIXO: "Muito baixo",
@@ -61,6 +61,20 @@ export const roleLabels: Record<UserRole, string> = {
   VIEWER: "Visualizador",
 };
 
+export const checklistAnswerLabels: Record<ChecklistAnswer, string> = {
+  SIM: "Sim",
+  NAO: "Não",
+  PARCIAL: "Parcial",
+  NA: "N/A",
+};
+
+export const checklistAnswerTones: Record<ChecklistAnswer, string> = {
+  SIM: "ok",
+  NAO: "fail",
+  PARCIAL: "warn",
+  NA: "muted",
+};
+
 export const categoryLabels: Record<SafetyCategory, string> = {
   B: "B",
   CAT_1: "1",
@@ -100,6 +114,13 @@ export function formatDate(value: Date | string | null | undefined) {
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+export function formatDateTime(value: Date | string | null | undefined) {
+  if (!value) return "—";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
 export function initialsOf(name: string) {
