@@ -94,6 +94,7 @@ test("imports NR-12 machine spreadsheet with preview before saving", async () =>
   assert.match(action, /createMany/);
   assert.match(page, /Importar planilha de máquinas/);
   assert.match(form, /Analisar planilha/);
+  assert.match(form, /parseMachineFile/);
   assert.match(form, /Confirmar cadastro/);
   assert.match(list, /Importar planilha/);
   assert.match(adminList, /Importar planilha/);

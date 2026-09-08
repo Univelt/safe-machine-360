@@ -8,7 +8,7 @@ frontend:
       commands:
         # A Amplify injeta as variáveis só no build. O compute SSR do Next.js
         # não as recebe em runtime a menos que estejam em .env.production.
-        - env | grep -e DATABASE_URL -e AUTH_SECRET -e AUTH_SECURE_COOKIE >> .env.production
+        - env | grep -e DATABASE_URL -e AUTH_SECRET -e AUTH_SECURE_COOKIE -e S3_REGION -e S3_BUCKET -e S3_ACCESS_KEY_ID -e S3_SECRET_ACCESS_KEY >> .env.production
         - cp .env.production .env
         - npm run build
   artifacts:

@@ -6,12 +6,10 @@ import { requireSession } from "@/lib/auth/guards";
 import { canManageCompany, isSuperAdmin } from "@/lib/auth/session";
 import {
   applyImportConflicts,
-  MACHINE_IMPORT_MAX_BYTES,
-  parseMachineSpreadsheet,
   type MachineImportDraft,
-} from "@/lib/import/machine-spreadsheet";
+  type MachineImportPreview,
+} from "@/lib/import/machine-import-map";
 import { prisma } from "@/lib/prisma";
-import { getUploadedFile } from "@/lib/storage";
 
 export type MachineImportPreviewResult = {
   companyId: string;
@@ -43,20 +41,36 @@ async function resolveScope(form: FormData) {
   return { session, companyId, unitId };
 }
 
-function isXlsx(file: File) {
-  const name = file.name.toLowerCase();
-  const type = file.type.toLowerCase();
-  return name.endsWith(".xlsx") || type.includes("spreadsheetml") || type.includes("excel");
+function parsePreviewPayload(value: string): Omit<MachineImportPreview, "rows"> & { rows: MachineImportDraft[] } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error("Não foi possível ler os dados extraídos da planilha.");
+  }
+  if (!parsed || typeof parsed !== "object") throw new Error("Não foi possível ler os dados extraídos da planilha.");
+  const payload = parsed as Partial<MachineImportPreview>;
+  const rows = Array.isArray(payload.rows) ? payload.rows.map(sanitizeDraft).filter((row): row is MachineImportDraft => Boolean(row)) : [];
+  if (!rows.length) throw new Error("A planilha não contém máquinas para importar.");
+  return {
+    sheetName: String(payload.sheetName ?? "Planilha").trim() || "Planilha",
+    mappedColumns: Array.isArray(payload.mappedColumns)
+      ? payload.mappedColumns.filter((column): column is MachineImportPreview["mappedColumns"][number] => Boolean(column && typeof column === "object" && "header" in column && "field" in column))
+      : [],
+    ignoredHeaders: Array.isArray(payload.ignoredHeaders) ? payload.ignoredHeaders.map((header) => String(header)) : [],
+    skippedRows: Array.isArray(payload.skippedRows)
+      ? payload.skippedRows.flatMap((row) => {
+          if (!row || typeof row !== "object" || !("rowNumber" in row)) return [];
+          return [{ rowNumber: Number(row.rowNumber) || 0, reason: String("reason" in row ? row.reason : "") }];
+        })
+      : [],
+    rows,
+  };
 }
 
 export async function previewMachineImportAction(formData: FormData): Promise<MachineImportPreviewResult> {
   const { companyId, unitId } = await resolveScope(formData);
-  const file = getUploadedFile(formData, "file");
-  if (!file) throw new Error("Selecione a planilha Excel (.xlsx).");
-  if (!isXlsx(file)) throw new Error("Envie um arquivo .xlsx da relação de máquinas NR-12.");
-  if (file.size > MACHINE_IMPORT_MAX_BYTES) throw new Error("A planilha deve ter no máximo 40 MB.");
-
-  const parsed = await parseMachineSpreadsheet(Buffer.from(await file.arrayBuffer()));
+  const parsed = parsePreviewPayload(text(formData, "parsed"));
   const existing = await prisma.machine.findMany({
     where: { companyId },
     select: { code: true },
@@ -102,7 +116,7 @@ function sanitizeDraft(value: unknown): MachineImportDraft | null {
     hrnCurrent: Number.isFinite(hrnCurrent) ? Math.round(hrnCurrent) : 0,
     description: String(row.description ?? name).trim() || name,
     observations: String(row.observations ?? "").trim() || null,
-    warnings: [],
+    warnings: Array.isArray(row.warnings) ? row.warnings.map((warning) => String(warning)).filter(Boolean) : [],
     existsInCompany: Boolean(row.existsInCompany),
     duplicateInFile: Boolean(row.duplicateInFile),
   };

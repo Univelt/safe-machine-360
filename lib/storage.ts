@@ -1,5 +1,6 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
@@ -86,10 +87,22 @@ export function assertAllowedImage(file: File) {
 
 async function persistUpload(file: File, format: string, segments: string[]) {
   const safeName = sanitizeFileName(file.name, format);
-  const relativePath = [...segments, safeName].join("/");
-  const fullPath = resolveUploadPath(relativePath);
-  await mkdir(path.dirname(fullPath), { recursive: true });
-  await writeFile(fullPath, Buffer.from(await file.arrayBuffer()));
+  const relativePath = sanitizeRelativePath([...segments, safeName].join("/"));
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (isS3Enabled()) {
+    await s3Client().send(
+      new PutObjectCommand({
+        Bucket: requireBucket(),
+        Key: relativePath,
+        Body: buffer,
+        ContentType: mimeForFormat(format, safeName),
+      }),
+    );
+  } else {
+    const fullPath = resolveUploadPath(relativePath);
+    await mkdir(path.dirname(fullPath), { recursive: true });
+    await writeFile(fullPath, buffer);
+  }
   return { relativePath, format, size: formatFileSize(file.size), fileName: safeName };
 }
 
@@ -114,12 +127,23 @@ export function evidenceKindForFile(file: File) {
 }
 
 export async function readStoredFile(relativePath: string) {
-  return readFile(resolveUploadPath(relativePath));
+  const key = sanitizeRelativePath(relativePath);
+  if (isS3Enabled()) {
+    const response = await s3Client().send(new GetObjectCommand({ Bucket: requireBucket(), Key: key }));
+    if (!response.Body) throw new Error("Arquivo não encontrado.");
+    return Buffer.from(await response.Body.transformToByteArray());
+  }
+  return readFile(resolveUploadPath(key));
 }
 
 export async function deleteStoredFile(relativePath: string) {
   try {
-    await unlink(resolveUploadPath(relativePath));
+    const key = sanitizeRelativePath(relativePath);
+    if (isS3Enabled()) {
+      await s3Client().send(new DeleteObjectCommand({ Bucket: requireBucket(), Key: key }));
+      return;
+    }
+    await unlink(resolveUploadPath(key));
   } catch {
     // already gone
   }
@@ -131,7 +155,7 @@ export function fileNameFromPath(relativePath: string) {
 
 export function resolveUploadPath(relativePath: string) {
   const root = uploadRoot();
-  const normalized = relativePath.replaceAll("\\", "/").replace(/^\/+/, "");
+  const normalized = sanitizeRelativePath(relativePath);
   const fullPath = path.resolve(root, ...normalized.split("/"));
   const relative = path.relative(root, fullPath);
   if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
@@ -140,8 +164,41 @@ export function resolveUploadPath(relativePath: string) {
   return fullPath;
 }
 
+function sanitizeRelativePath(relativePath: string) {
+  const normalized = relativePath.replaceAll("\\", "/").replace(/^\/+/, "");
+  if (!normalized || normalized.split("/").some((segment) => segment === "" || segment === "..")) {
+    throw new Error("Caminho de arquivo inválido.");
+  }
+  return normalized;
+}
+
 function uploadRoot() {
   return path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads"));
+}
+
+function isS3Enabled() {
+  return Boolean(process.env.S3_BUCKET);
+}
+
+function requireBucket() {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) throw new Error("S3_BUCKET não configurado.");
+  return bucket;
+}
+
+let cachedS3Client: S3Client | null = null;
+
+function s3Client() {
+  if (!cachedS3Client) {
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    cachedS3Client = new S3Client({
+      region: process.env.S3_REGION || "us-east-1",
+      // sem chaves explícitas o SDK usa a role/credential chain padrão (ex.: ECS/Amplify)
+      credentials: accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined,
+    });
+  }
+  return cachedS3Client;
 }
 
 function detectFormat(file: File) {

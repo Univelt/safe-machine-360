@@ -13,6 +13,7 @@ import {
   splitSectorArea,
 } from "../lib/import/machine-import-map";
 import { parseMachineSpreadsheet } from "../lib/import/machine-spreadsheet";
+import { parseCsvToGrid, parseMachineCsv } from "../lib/import/machine-csv";
 
 test("classifies NR-12 spreadsheet headers onto Machine fields", () => {
   assert.equal(classifyHeader("CÓDIGO INTERNO"), "code");
@@ -57,6 +58,19 @@ test("parses the Assa Abloy NR-12 workbook when the file is present", async () =
     parsed.mappedColumns.map((column) => column.field),
     ["code", "name", "machineType", "sector", "manufacturer", "model", "year", "capacity", "description", "riskLevel", "hrnCurrent", "observations"],
   );
+});
+
+test("parses NR-12 CSV with semicolon delimiter", () => {
+  const csv = [
+    "ITEM;CÓDIGO INTERNO;NOME DA MÁQUINA/EQUIPAMENTO;LOTE;SETOR (ÁREA);FABRICANTE;MODELO;ANO DE FABRICAÇÃO",
+    "1;ASSA ABLOY - 001;PRE - 030 (MQ - 337);PRENSA;ESTAMPARIA;NÃO IDENTIFICADO;PRENSA - JUNDIAÍ 135T;1999",
+  ].join("\n");
+  const parsed = parseMachineCsv(csv, "maquinas.csv");
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rows[0]?.code, "ASSA ABLOY - 001");
+  assert.equal(parsed.rows[0]?.name, "PRE - 030 (MQ - 337)");
+  assert.equal(parsed.rows[0]?.machineType, "PRENSA");
+  assert.equal(parseCsvToGrid(csv)[1]?.[1], "ASSA ABLOY - 001");
 });
 
 test("builds a machine draft and flags codes that already exist", () => {

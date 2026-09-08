@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { confirmMachineImportAction, previewMachineImportAction, type MachineImportPreviewResult } from "@/app/actions/machine-import";
 import { machineImportFieldLabels, riskLabelFor, type MachineImportDraft } from "@/lib/import/machine-import-map";
+import { parseMachineFile } from "@/lib/import/parse-machine-file";
 import { riskTones } from "@/lib/labels";
 
 type UnitOption = { id: string; name: string; companyId: string; companyName: string };
@@ -27,6 +28,7 @@ export function MachineImportForm({
     const scoped = units.filter((unit) => !defaultCompanyId || unit.companyId === defaultCompanyId);
     return scoped[0]?.id ?? units[0]?.id ?? "";
   });
+  const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<MachineImportPreviewResult | null>(null);
   const [selected, setSelected] = useState<Record<number, boolean>>({});
@@ -67,11 +69,20 @@ export function MachineImportForm({
     setSelected(next);
   }
 
-  function analyze(formData: FormData) {
+  function analyze(nextFile = file) {
+    if (!nextFile) {
+      setError("Selecione a planilha Excel (.xlsx) ou o CSV.");
+      return;
+    }
     setError("");
     setMessage("");
     startTransition(async () => {
       try {
+        const parsed = await parseMachineFile(nextFile);
+        const formData = new FormData();
+        formData.set("companyId", companyId);
+        formData.set("unitId", unitId);
+        formData.set("parsed", JSON.stringify(parsed));
         const result = await previewMachineImportAction(formData);
         const initial: Record<number, boolean> = {};
         for (const row of result.rows) {
@@ -81,18 +92,19 @@ export function MachineImportForm({
         setSelected(initial);
       } catch (caught) {
         setPreview(null);
-        setError(caught instanceof Error ? caught.message : "Não foi possível ler a planilha.");
+        setError(importErrorMessage(caught));
       }
     });
   }
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    setFileName(file?.name ?? "");
+    const nextFile = event.target.files?.[0] ?? null;
+    setFile(nextFile);
+    setFileName(nextFile?.name ?? "");
     setPreview(null);
     setError("");
-    if (!file || !event.currentTarget.form) return;
-    analyze(new FormData(event.currentTarget.form));
+    if (!nextFile) return;
+    analyze(nextFile);
   }
 
   function confirm() {
@@ -110,14 +122,21 @@ export function MachineImportForm({
         router.push("/cliente/maquinas");
         router.refresh();
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Não foi possível salvar as máquinas.");
+        setError(importErrorMessage(caught, "Não foi possível salvar as máquinas."));
       }
     });
   }
 
   return (
     <div className="import-stack">
-      <form className="panel record-form" action={analyze} onChange={() => setError("")}>
+      <form
+        className="panel record-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          analyze();
+        }}
+        onChange={() => setError("")}
+      >
         {isSuperAdmin && (
           <label>
             Empresa
@@ -142,10 +161,10 @@ export function MachineImportForm({
             name="file"
             type="file"
             required
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
             onChange={onFileChange}
           />
-          <small>Arquivo .xlsx da relação de máquinas (até 40 MB). Ao escolher o arquivo, a revisão aparece abaixo. Fotos embutidas não são importadas nesta etapa.</small>
+          <small>Arquivo .xlsx ou .csv da relação de máquinas. A leitura acontece no navegador; só os dados das máquinas vão ao servidor. Fotos embutidas não são importadas nesta etapa.</small>
         </label>
         <div className="form-actions">
           <button className="button secondary" type="submit" disabled={pending || !visibleUnits.length}>
@@ -268,4 +287,12 @@ export function MachineImportForm({
       )}
     </div>
   );
+}
+
+function importErrorMessage(caught: unknown, fallback = "Não foi possível ler a planilha.") {
+  const message = caught instanceof Error ? caught.message : "";
+  if (/413|too large|entity too large|body exceeded/i.test(message) || (caught instanceof Error && "digest" in caught && String((caught as { digest?: string }).digest).includes("413"))) {
+    return "O Amplify recusou o envio por tamanho. Recarregue a página e tente de novo; a planilha agora é lida no navegador.";
+  }
+  return message || fallback;
 }
