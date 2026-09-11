@@ -176,13 +176,13 @@ model Machine {
   machineType            String?
   manufacturer           String
   model                  String
-  year                   Int
+  year                   String
   sector                 String
   area                   String
   capacity               String?
   category               SafetyCategory?
-  hrnCurrent             Int
-  hrnResidual            Int?
+  hrnCurrent             String
+  hrnResidual            String?
   riskLevel              RiskLevel
   energySources          String
   mainSystems            String?
