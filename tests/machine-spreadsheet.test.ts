@@ -14,6 +14,20 @@ import {
 } from "../lib/import/machine-import-map";
 import { parseMachineSpreadsheet } from "../lib/import/machine-spreadsheet";
 import { parseCsvToGrid, parseMachineCsv } from "../lib/import/machine-csv";
+import { classifyHrn, classifyHrnPair } from "../lib/labels";
+
+test("classifies HRN values using the four live risk bands", () => {
+  assert.equal(classifyHrn(""), null);
+  assert.equal(classifyHrn("abc"), null);
+  assert.equal(classifyHrn("0"), "BAIXO");
+  assert.equal(classifyHrn("5"), "BAIXO");
+  assert.equal(classifyHrn("6"), "SIGNIFICATIVO");
+  assert.equal(classifyHrn("50"), "SIGNIFICATIVO");
+  assert.equal(classifyHrn("51"), "ALTO");
+  assert.equal(classifyHrn("500"), "ALTO");
+  assert.equal(classifyHrn("501"), "MUITO_ALTO");
+  assert.equal(classifyHrnPair("4", "600"), "MUITO_ALTO");
+});
 
 test("classifies NR-12 spreadsheet headers onto Machine fields", () => {
   assert.equal(classifyHeader("CÓDIGO INTERNO"), "code");
