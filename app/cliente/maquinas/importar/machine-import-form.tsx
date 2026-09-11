@@ -4,9 +4,9 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload } from "lucide-rea
 import { useMemo, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { confirmMachineImportAction, previewMachineImportAction, type MachineImportPreviewResult } from "@/app/actions/machine-import";
-import { machineImportFieldLabels, riskLabelFor, type MachineImportDraft } from "@/lib/import/machine-import-map";
+import { machineImportFieldLabels, type MachineImportDraft } from "@/lib/import/machine-import-map";
 import { parseMachineFile } from "@/lib/import/parse-machine-file";
-import { riskTones } from "@/lib/labels";
+import { RiskBadge } from "@/app/components/risk-badge";
 
 type UnitOption = { id: string; name: string; companyId: string; companyName: string };
 type CompanyOption = { id: string; name: string };
@@ -260,7 +260,7 @@ export function MachineImportForm({
                         <small>{row.model}</small>
                       </td>
                       <td>
-                        <span className={`badge ${riskTones[row.riskLevel]}`}><span />{riskLabelFor(row.riskLevel)}{row.hrnCurrent ? ` · HRN ${row.hrnCurrent}` : ""}</span>
+                        <RiskBadge level={row.riskLevel} hrn={row.hrnCurrent || undefined} />
                       </td>
                       <td>
                         {row.warnings.length ? (
