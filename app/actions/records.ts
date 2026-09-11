@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { ActivityPriority, ActivityStatus, DocumentKind, MachineStatus, RiskLevel, SafetyCategory, UserRole } from "@prisma/client";
+import type { ActivityPriority, ActivityStatus, DocumentKind, MachineStatus, SafetyCategory, UserRole } from "@prisma/client";
 import { requireAdmin, requireSession } from "@/lib/auth/guards";
 import { canManageCompany, canMutateOperations, isSuperAdmin } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
 import { assertAllowedImage, assertAllowedUpload, deleteStoredFile, evidenceKindForFile, getUploadedFile, getUploadedFiles, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload } from "@/lib/storage";
+import { classifyHrnPair } from "@/lib/labels";
 
 function text(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
@@ -76,6 +77,8 @@ export async function createMachineAction(formData: FormData) {
   const unitId = text(formData, "unitId");
   const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId } });
   if (!unit) throw new Error("Unidade inválida para a empresa.");
+  const hrnCurrent = text(formData, "hrnCurrent");
+  const hrnResidual = optional(formData, "hrnResidual");
   const machine = await prisma.machine.create({
     data: {
       companyId,
@@ -93,9 +96,9 @@ export async function createMachineAction(formData: FormData) {
       area: text(formData, "area") || "Geral",
       capacity: optional(formData, "capacity"),
       category: (optional(formData, "category") as SafetyCategory | null) ?? null,
-      hrnCurrent: text(formData, "hrnCurrent"),
-      hrnResidual: optional(formData, "hrnResidual"),
-      riskLevel: (text(formData, "riskLevel") || "SIGNIFICATIVO") as RiskLevel,
+      hrnCurrent,
+      hrnResidual,
+      riskLevel: classifyHrnPair(hrnCurrent, hrnResidual) ?? "BAIXO",
       energySources: text(formData, "energySources") || "Elétrica",
       mainSystems: optional(formData, "mainSystems"),
       usage: optional(formData, "usage"),
@@ -310,6 +313,8 @@ export async function createRiskAssessmentAction(formData: FormData) {
   if (!canMutateOperations(session)) throw new Error("Sem permissão.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
   if (!machine) throw new Error("Máquina não encontrada.");
+  const hrnCurrent = text(formData, "hrnCurrent");
+  const hrnResidual = optional(formData, "hrnResidual");
   const assessment = await prisma.riskAssessment.create({
     data: {
       companyId: machine.companyId,
@@ -319,7 +324,7 @@ export async function createRiskAssessmentAction(formData: FormData) {
       category: (text(formData, "category") || "CAT_1") as SafetyCategory,
       hrnCurrent: numberValue(formData, "hrnCurrent"),
       hrnResidual: numberValue(formData, "hrnResidual"),
-      riskLevel: (text(formData, "riskLevel") || "SIGNIFICATIVO") as RiskLevel,
+      riskLevel: classifyHrnPair(hrnCurrent, hrnResidual) ?? "BAIXO",
       issuedAt: new Date(text(formData, "issuedAt") || Date.now()),
       expiresAt: optional(formData, "expiresAt") ? new Date(text(formData, "expiresAt")) : null,
       notes: optional(formData, "notes"),

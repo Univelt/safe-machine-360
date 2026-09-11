@@ -1,6 +1,7 @@
 "use server";
 
 import type { MachineStatus, RiskLevel } from "@prisma/client";
+import { classifyHrn } from "@/lib/labels";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth/guards";
 import { canManageCompany, isSuperAdmin } from "@/lib/auth/session";
@@ -94,10 +95,11 @@ function sanitizeDraft(value: unknown): MachineImportDraft | null {
   const code = String(row.code ?? "").trim();
   const name = String(row.name ?? "").trim();
   if (!code || !name) return null;
-  const riskLevel = String(row.riskLevel ?? "SIGNIFICATIVO") as RiskLevel;
+  const parsedRiskLevel = String(row.riskLevel ?? "SIGNIFICATIVO") as RiskLevel;
   const allowedRisk: RiskLevel[] = ["MUITO_BAIXO", "BAIXO", "SIGNIFICATIVO", "ALTO", "MUITO_ALTO"];
   const year = Number(row.year);
   const hrnCurrent = Number(row.hrnCurrent);
+  const hrnText = Number.isFinite(hrnCurrent) ? String(Math.round(hrnCurrent)) : "";
   return {
     rowNumber: Number(row.rowNumber) || 0,
     code,
@@ -112,7 +114,7 @@ function sanitizeDraft(value: unknown): MachineImportDraft | null {
     sector: String(row.sector ?? "Não identificado").trim() || "Não identificado",
     area: String(row.area ?? "Geral").trim() || "Geral",
     capacity: String(row.capacity ?? "").trim() || null,
-    riskLevel: allowedRisk.includes(riskLevel) ? riskLevel : "SIGNIFICATIVO",
+    riskLevel: classifyHrn(hrnText) ?? (allowedRisk.includes(parsedRiskLevel) ? parsedRiskLevel : "SIGNIFICATIVO"),
     hrnCurrent: Number.isFinite(hrnCurrent) ? Math.round(hrnCurrent) : 0,
     description: String(row.description ?? name).trim() || name,
     observations: String(row.observations ?? "").trim() || null,
