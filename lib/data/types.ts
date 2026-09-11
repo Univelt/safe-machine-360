@@ -26,7 +26,7 @@ export type MachineView = {
   area: string;
   manufacturer: string;
   model: string;
-  year: number;
+  year: string;
   risk: string;
   riskTone: string;
   appreciation: string;
@@ -37,8 +37,8 @@ export type MachineView = {
   description: string;
   serial: string;
   energy: string;
-  hrn: number;
-  hrnResidual: number | null;
+  hrn: string;
+  hrnResidual: string | null;
   category: SafetyCategory | null;
   assetTag: string | null;
   machineType: string | null;
