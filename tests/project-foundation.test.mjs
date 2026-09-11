@@ -69,7 +69,13 @@ test("provides NR-12 machine cadastro, APR, checklist and action plan", async ()
     source("app/cliente/maquinas/[id]/plano/page.tsx"),
   ]);
   assert.match(form, /HRN atual/);
-  assert.match(form, /Limite do equipamento/);
+  assert.doesNotMatch(form, /name="equipmentLimits"|name="description"/);
+  assert.match(form, /name="year" type="text"/);
+  assert.match(form, /name="hrnCurrent" type="text"/);
+  assert.match(form, /name="hrnResidual" type="text"/);
+  assert.match(form, /Função dos operadores/);
+  assert.match(form, /Identificação de riscos - Mecânico/);
+  assert.match(form, /Identificação de riscos - Elétrico/);
   assert.match(details, /Documentos vinculados à máquina/);
   assert.match(details, /MachinePhotos/);
   assert.match(apr, /Número do documento \(APR\)/);
