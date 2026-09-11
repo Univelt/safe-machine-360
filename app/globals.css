@@ -221,9 +221,10 @@ tbody tr:hover { background: #fbfcfd; }
 .machine-cell small, .table-secondary { display: block; margin-top: 3px; color: var(--subtle); font-size: 9px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 20px; font-size: 9px; font-weight: 700; white-space: nowrap; }
 .badge > span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.badge.risk-critical { color: #a72834; background: #fcebed; }
-.badge.risk-high { color: #ba4b17; background: #fff0e7; }
-.badge.risk-medium { color: #92610d; background: #fff6df; }
+.badge.risk-low { color: #18794e; background: #e6f8ee; }
+.badge.risk-medium { color: #9a6700; background: #fff4cc; }
+.badge.risk-high { color: #b54708; background: #ffeadf; }
+.badge.risk-critical { color: #b42318; background: #ffe4e1; }
 .document-status { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .document-status.danger { color: var(--red); }
 .document-status.warning { color: var(--amber); }
@@ -306,6 +307,11 @@ tbody tr:hover { background: #fbfcfd; }
 .record-form label { display: flex; flex-direction: column; gap: 6px; color: #334256; font-size: 11px; font-weight: 700; }
 .record-form label.full { grid-column: 1 / -1; }
 .record-form input, .record-form select, .record-form textarea { min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; }
+.hrn-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(190px, max-content)); gap: 16px 24px; align-items: end; }
+.hrn-field { min-width: 0; }
+.hrn-control { display: flex; align-items: center; gap: 9px; }
+.record-form .hrn-input { width: 96px; min-width: 96px; text-align: center; font-variant-numeric: tabular-nums; }
+.hrn-control .badge { min-height: 28px; padding: 5px 9px; }
 .record-form input[type="file"] { padding: 10px; background: #f8fafc; cursor: pointer; }
 .record-form .file-field small { color: var(--subtle); font-size: 11px; font-weight: 500; }
 .document-missing-file { color: var(--muted); font-size: 12px; font-weight: 600; }
@@ -316,6 +322,7 @@ tbody tr:hover { background: #fbfcfd; }
 .item-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
 .checklist-editor .item-row input { width: 100%; }
 .form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+.hrn-detail-value { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .button:disabled { opacity: .55; cursor: progress; transform: none; box-shadow: none; }
 .import-stack { display: grid; gap: 16px; }
 .import-alert { margin: 0; padding: 12px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
@@ -711,6 +718,7 @@ tbody tr:hover { background: #fbfcfd; }
   .user-copy, .user-menu > svg, .demo-pill { display: none; }
   .user-menu { margin: 0; padding: 0; }
   .main-content { padding: 18px 14px 30px; }
+  .hrn-fields { grid-template-columns: 1fr; }
   .breadcrumb { margin-bottom: 15px; }
   .page-heading { align-items: stretch; flex-direction: column; }
   .heading-actions { display: grid; grid-template-columns: 1fr; }

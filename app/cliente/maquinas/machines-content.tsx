@@ -6,6 +6,7 @@ import { useState } from "react";
 import { paginateItems, TablePagination } from "@/app/components/table-pagination";
 import type { MachineView } from "@/lib/data/types";
 import { documentTone } from "@/lib/labels";
+import { RiskBadge } from "@/app/components/risk-badge";
 
 export function MachinesContent({ machines, companyName, canCreate }: { machines: MachineView[]; companyName: string; canCreate: boolean }) {
   const [query, setQuery] = useState("");
@@ -58,7 +59,7 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
 
       <section className="machine-filter-panel" aria-label="Filtros de máquinas">
         <label className="machine-search"><Search size={18} /><span className="sr-only">Buscar máquinas</span><input value={query} onChange={(event) => updateFilter(setQuery, event.target.value)} placeholder="Buscar por máquina, código, TAG ou fabricante" /></label>
-        <label className="filter-select"><span>Risco</span><select value={risk} onChange={(event) => updateFilter(setRisk, event.target.value)}><option>Todos</option><option>Muito baixo</option><option>Baixo</option><option>Significativo</option><option>Alto</option><option>Muito alto</option></select><ChevronDown size={15} /></label>
+        <label className="filter-select"><span>Risco</span><select value={risk} onChange={(event) => updateFilter(setRisk, event.target.value)}><option>Todos</option><option>Baixo</option><option>Médio</option><option>Alto</option><option>Muito alto</option></select><ChevronDown size={15} /></label>
         <label className="filter-select"><span>Setor</span><select value={sector} onChange={(event) => updateFilter(setSector, event.target.value)}><option>Todos</option>{sectors.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={15} /></label>
         <label className="filter-select"><span>Documentação</span><select value={documentState} onChange={(event) => updateFilter(setDocumentState, event.target.value)}><option>Todos</option><option>Em dia</option><option>A vencer</option><option>Vencido</option><option>Sem documento</option></select><ChevronDown size={15} /></label>
         <button className="button secondary filter-more" type="button"><SlidersHorizontal size={16} /> Mais filtros</button>
@@ -72,7 +73,7 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
             <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><span className="machine-thumb"><Wrench size={18} /></span><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
             <td><strong className="table-primary">{machine.sector}</strong><small className="table-secondary">{machine.area}</small></td>
             <td><strong className="table-primary">{machine.manufacturer}</strong><small className="table-secondary">{machine.model}</small></td>
-            <td><span className={`badge ${machine.riskTone}`}><span />{machine.risk}{machine.hrn ? ` · HRN ${machine.hrn}` : ""}</span></td>
+            <td><RiskBadge level={machine.riskLevel} hrn={machine.hrn} /></td>
             <td><span className={`doc-pill ${documentTone(machine.appreciation)}`}>{machine.appreciation}</span><small className="table-secondary">{machine.appreciationDate}</small></td>
             <td><span className={`doc-pill ${documentTone(machine.checklist)}`}>{machine.checklist}</span><small className="table-secondary">{machine.checklistDate}</small></td>
             <td><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></td>

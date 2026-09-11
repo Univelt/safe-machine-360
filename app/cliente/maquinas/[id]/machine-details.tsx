@@ -3,6 +3,8 @@ import Link from "next/link";
 import { MachinePhotos } from "./machine-photos";
 import type { MachineView } from "@/lib/data/types";
 import { categoryLabels, checklistAnswerLabels, checklistAnswerTones, documentStatusLabels, documentTone, formatDate, formatDateTime } from "@/lib/labels";
+import { RiskBadge } from "@/app/components/risk-badge";
+import { classifyHrn } from "@/lib/labels";
 
 export function MachineDetails({ machine, canMutate }: { machine: MachineView; canMutate: boolean }) {
   const latestApr = machine.riskAssessments[0];
@@ -57,8 +59,8 @@ export function MachineDetails({ machine, canMutate }: { machine: MachineView; c
                   <div><dt>Número do documento</dt><dd>{latestApr.documentNumber}</dd></div>
                   <div><dt>Revisão</dt><dd>{latestApr.revision}</dd></div>
                   <div><dt>Categoria</dt><dd>{categoryLabels[latestApr.category]}</dd></div>
-                  <div><dt>HRN atual</dt><dd>{latestApr.hrnCurrent}</dd></div>
-                  <div><dt>HRN residual</dt><dd>{latestApr.hrnResidual}</dd></div>
+                  <div><dt>HRN atual</dt><dd className="hrn-detail-value">{latestApr.hrnCurrent}<RiskBadge level={classifyHrn(latestApr.hrnCurrent)} /></dd></div>
+                  <div><dt>HRN residual</dt><dd className="hrn-detail-value">{latestApr.hrnResidual}<RiskBadge level={classifyHrn(latestApr.hrnResidual)} /></dd></div>
                   <div><dt>Emissão</dt><dd>{formatDate(latestApr.issuedAt)}</dd></div>
                 </dl>
               ) : <p className="empty-copy">Nenhuma APR cadastrada.</p>}
@@ -117,7 +119,7 @@ export function MachineDetails({ machine, canMutate }: { machine: MachineView; c
         </div>
 
         <aside className="detail-side-column">
-          <section className="panel risk-summary"><div className="panel-header"><div><span className="panel-kicker">Avaliação de risco</span><h2>Classificação atual</h2></div></div><div className="risk-number"><ShieldAlert size={26} /><strong>{machine.hrn}</strong><span>HRN atual</span></div><dl><div><dt>Nível</dt><dd><span className={`badge ${machine.riskTone}`}><span />{machine.risk}</span></dd></div><div><dt>HRN residual</dt><dd>{machine.hrnResidual ?? "—"}</dd></div><div><dt>Categoria</dt><dd>{machine.category ? categoryLabels[machine.category] : "—"}</dd></div><div><dt>Situação NR-12</dt><dd>{machine.status === "Interditada" ? "Adequação necessária" : "Monitorada"}</dd></div></dl></section>
+          <section className="panel risk-summary"><div className="panel-header"><div><span className="panel-kicker">Avaliação de risco</span><h2>Classificação atual</h2></div></div><div className="risk-number"><ShieldAlert size={26} /><strong>{machine.hrn}</strong><span>HRN atual</span></div><dl><div><dt>Nível</dt><dd><RiskBadge level={machine.riskLevel} /></dd></div><div><dt>HRN residual</dt><dd className="hrn-detail-value">{machine.hrnResidual ?? "—"}{machine.hrnResidual && <RiskBadge level={classifyHrn(machine.hrnResidual)} />}</dd></div><div><dt>Categoria</dt><dd>{machine.category ? categoryLabels[machine.category] : "—"}</dd></div><div><dt>Situação NR-12</dt><dd>{machine.status === "Interditada" ? "Adequação necessária" : "Monitorada"}</dd></div></dl></section>
           <section className="panel quick-facts" id="dados-tecnicos"><div className="panel-header"><div><span className="panel-kicker">Limites do equipamento</span><h2>Características</h2></div></div><dl>
             <div><dt>Fontes de energia</dt><dd>{machine.energy}</dd></div>
             <div><dt>Sistemas</dt><dd>{machine.mainSystems ?? "—"}</dd></div>

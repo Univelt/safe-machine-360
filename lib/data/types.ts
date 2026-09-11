@@ -27,6 +27,7 @@ export type MachineView = {
   manufacturer: string;
   model: string;
   year: string;
+  riskLevel: RiskLevel;
   risk: string;
   riskTone: string;
   appreciation: string;

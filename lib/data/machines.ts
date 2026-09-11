@@ -39,6 +39,7 @@ export function toMachineView(machine: MachineRecord): MachineView {
     manufacturer: machine.manufacturer,
     model: machine.model,
     year: machine.year,
+    riskLevel: machine.riskLevel,
     risk: riskLabels[machine.riskLevel],
     riskTone: riskTones[machine.riskLevel],
     appreciation: appreciation.label,

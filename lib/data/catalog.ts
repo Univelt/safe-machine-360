@@ -114,9 +114,8 @@ export async function companyMetrics(session: SessionUser) {
   const compliance = documents.length ? Math.round((valid / documents.length) * 100) : 0;
 
   const riskDistribution = [
-    { label: "Muito baixo", value: machines.filter((item) => item.riskLevel === "MUITO_BAIXO").length, tone: "risk-very-low" },
-    { label: "Baixo", value: machines.filter((item) => item.riskLevel === "BAIXO").length, tone: "risk-low" },
-    { label: "Significativo", value: machines.filter((item) => item.riskLevel === "SIGNIFICATIVO").length, tone: "risk-medium" },
+    { label: "Baixo", value: machines.filter((item) => item.riskLevel === "MUITO_BAIXO" || item.riskLevel === "BAIXO").length, tone: "risk-low" },
+    { label: "Médio", value: machines.filter((item) => item.riskLevel === "SIGNIFICATIVO").length, tone: "risk-medium" },
     { label: "Alto", value: machines.filter((item) => item.riskLevel === "ALTO").length, tone: "risk-high" },
     { label: "Muito alto", value: machines.filter((item) => item.riskLevel === "MUITO_ALTO").length, tone: "risk-critical" },
   ].map((item) => ({ ...item, percent: machines.length ? Math.round((item.value / machines.length) * 100) : 0 }));

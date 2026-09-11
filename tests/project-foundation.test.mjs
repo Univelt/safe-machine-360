@@ -61,24 +61,29 @@ test("scopes client queries by company and keeps admin global", async () => {
 });
 
 test("provides NR-12 machine cadastro, APR, checklist and action plan", async () => {
-  const [form, details, apr, checklist, plan] = await Promise.all([
+  const [form, details, apr, checklist, plan, hrnFields] = await Promise.all([
     source("app/cliente/maquinas/nova/page.tsx"),
     source("app/cliente/maquinas/[id]/machine-details.tsx"),
     source("app/cliente/maquinas/[id]/apr/page.tsx"),
     source("app/cliente/maquinas/[id]/checklist/page.tsx"),
     source("app/cliente/maquinas/[id]/plano/page.tsx"),
+    source("app/components/hrn-fields.tsx"),
   ]);
-  assert.match(form, /HRN atual/);
+  assert.match(form, /HrnFields/);
+  assert.doesNotMatch(form, /Nível de risco|name="riskLevel"/);
   assert.doesNotMatch(form, /name="equipmentLimits"|name="description"/);
   assert.match(form, /name="year" type="text"/);
-  assert.match(form, /name="hrnCurrent" type="text"/);
-  assert.match(form, /name="hrnResidual" type="text"/);
+  assert.match(hrnFields, /name={name}/);
+  assert.match(hrnFields, /type="text"/);
+  assert.match(hrnFields, /inputMode="numeric"/);
   assert.match(form, /Função dos operadores/);
   assert.match(form, /Identificação de riscos - Mecânico/);
   assert.match(form, /Identificação de riscos - Elétrico/);
   assert.match(details, /Documentos vinculados à máquina/);
   assert.match(details, /MachinePhotos/);
   assert.match(apr, /Número do documento \(APR\)/);
+  assert.match(apr, /HrnFields/);
+  assert.doesNotMatch(apr, /Nível de risco|name="riskLevel"/);
   assert.match(checklist, /Escolha um modelo cadastrado no banco/);
   assert.match(plan, /Não conformidade/);
 });
