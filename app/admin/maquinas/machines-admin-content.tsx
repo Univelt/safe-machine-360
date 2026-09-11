@@ -6,6 +6,7 @@ import { useState } from "react";
 import { paginateItems, TablePagination } from "@/app/components/table-pagination";
 import type { MachineView } from "@/lib/data/types";
 import { documentTone } from "@/lib/labels";
+import { RiskBadge } from "@/app/components/risk-badge";
 
 export function MachinesAdminContent({ machines }: { machines: MachineView[] }) {
   const [query, setQuery] = useState("");
@@ -52,7 +53,7 @@ export function MachinesAdminContent({ machines }: { machines: MachineView[] }) 
                 <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><span className="machine-thumb"><Wrench size={18} /></span><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
                 <td><strong className="table-primary">{machine.companyName}</strong></td>
                 <td>{machine.sector}</td>
-                <td><span className={`badge ${machine.riskTone}`}><span />{machine.risk}</span></td>
+                <td><RiskBadge level={machine.riskLevel} /></td>
                 <td><span className={`doc-pill ${documentTone(machine.appreciation)}`}>{machine.appreciation}</span></td>
                 <td><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></td>
               </tr>
