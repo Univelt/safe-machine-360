@@ -8,20 +8,20 @@ import { MachineThumbnail } from "@/app/components/machine-thumbnail";
 import type { MachineView } from "@/lib/data/types";
 import { documentTone } from "@/lib/labels";
 import { RiskBadge } from "@/app/components/risk-badge";
+import { countActiveMachineFilters, filterMachines, type MachineSortOrder } from "@/lib/machine-filters";
 
 export function MachinesContent({ machines, companyName, canCreate }: { machines: MachineView[]; companyName: string; canCreate: boolean }) {
   const [query, setQuery] = useState("");
   const [risk, setRisk] = useState("Todos");
   const [sector, setSector] = useState("Todos");
-  const [documentState, setDocumentState] = useState("Todos");
+  const [documentation, setDocumentation] = useState("Todos");
+  const [sort, setSort] = useState<MachineSortOrder>("default");
+  const [showMore, setShowMore] = useState(false);
   const [page, setPage] = useState(1);
-  const sectors = [...new Set(machines.map((machine) => machine.sector))].sort();
-  const activeFilters = [risk, sector, documentState].filter((value) => value !== "Todos").length + (query ? 1 : 0);
-  const filtered = machines.filter((machine) => {
-    const normalized = query.trim().toLocaleLowerCase("pt-BR");
-    const matchesQuery = !normalized || [machine.name, machine.code, machine.tag, machine.manufacturer].some((value) => value.toLocaleLowerCase("pt-BR").includes(normalized));
-    return matchesQuery && (risk === "Todos" || machine.risk === risk) && (sector === "Todos" || machine.sector === sector) && (documentState === "Todos" || machine.appreciation === documentState || machine.checklist === documentState);
-  });
+  const sectors = [...new Set(machines.map((machine) => machine.sector))].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  const risks = [...new Set(machines.map((machine) => machine.risk))].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  const activeFilters = countActiveMachineFilters({ query, risk, sector, documentation, sort });
+  const filtered = filterMachines(machines, { query, risk, sector, documentation, sort });
   const paged = paginateItems(filtered, page);
 
   function goToPage(next: number) {
@@ -38,7 +38,9 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
     setQuery("");
     setRisk("Todos");
     setSector("Todos");
-    setDocumentState("Todos");
+    setDocumentation("Todos");
+    setSort("default");
+    setShowMore(false);
     setPage(1);
   }
 
@@ -60,16 +62,17 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
 
       <section className="machine-filter-panel" aria-label="Filtros de máquinas">
         <label className="machine-search"><Search size={18} /><span className="sr-only">Buscar máquinas</span><input value={query} onChange={(event) => updateFilter(setQuery, event.target.value)} placeholder="Buscar por máquina, código, TAG ou fabricante" /></label>
-        <label className="filter-select"><span>Risco</span><select value={risk} onChange={(event) => updateFilter(setRisk, event.target.value)}><option>Todos</option><option>Baixo</option><option>Médio</option><option>Alto</option><option>Muito alto</option></select><ChevronDown size={15} /></label>
+        <label className="filter-select"><span>Risco</span><select value={risk} onChange={(event) => updateFilter(setRisk, event.target.value)}><option>Todos</option>{risks.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={15} /></label>
         <label className="filter-select"><span>Setor</span><select value={sector} onChange={(event) => updateFilter(setSector, event.target.value)}><option>Todos</option>{sectors.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={15} /></label>
-        <label className="filter-select"><span>Documentação</span><select value={documentState} onChange={(event) => updateFilter(setDocumentState, event.target.value)}><option>Todos</option><option>Em dia</option><option>A vencer</option><option>Vencido</option><option>Sem documento</option></select><ChevronDown size={15} /></label>
-        <button className="button secondary filter-more" type="button"><SlidersHorizontal size={16} /> Mais filtros</button>
+        <label className="filter-select"><span>Documentação</span><select value={documentation} onChange={(event) => updateFilter(setDocumentation, event.target.value)}><option>Todos</option><option>Em dia</option><option>A vencer</option><option>Sem documento</option></select><ChevronDown size={15} /></label>
+        <button className="button secondary filter-more" type="button" aria-expanded={showMore} aria-controls={showMore ? "client-machine-extra-filters" : undefined} onClick={() => setShowMore((shown) => !shown)}><SlidersHorizontal size={16} /> Mais filtros</button>
+        {showMore && <label className="filter-select machine-extra-filter" id="client-machine-extra-filters"><span>Ordem alfabética</span><select value={sort} onChange={(event) => updateFilter(setSort, event.target.value as MachineSortOrder)}><option value="default">Padrão</option><option value="az">A a Z</option><option value="za">Z a A</option></select><ChevronDown size={15} /></label>}
       </section>
 
       <div className="machine-results-bar"><span><Filter size={14} /><strong>{filtered.length}</strong> equipamentos encontrados {activeFilters > 0 && `· ${activeFilters} filtros ativos`}</span>{activeFilters > 0 && <button type="button" onClick={clearFilters}><X size={14} /> Limpar filtros</button>}</div>
 
       <section className="panel machine-list-panel">
-        <div className="responsive-table"><table className="machine-list-table"><thead><tr><th>Equipamento</th><th>Setor</th><th>Fabricante</th><th>Nível de risco</th><th>Apreciação</th><th>Checklist</th><th>Status</th><th><span className="sr-only">Abrir</span></th></tr></thead>
+        {filtered.length > 0 ? <div className="responsive-table"><table className="machine-list-table"><thead><tr><th>Equipamento</th><th>Setor</th><th>Fabricante</th><th>Nível de risco</th><th>Apreciação</th><th>Checklist</th><th>Status</th><th><span className="sr-only">Abrir</span></th></tr></thead>
           <tbody>{paged.items.map((machine) => <tr key={machine.id}>
             <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><MachineThumbnail photos={machine.photos} /><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
             <td><strong className="table-primary">{machine.sector}</strong><small className="table-secondary">{machine.area}</small></td>
@@ -80,8 +83,7 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
             <td><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></td>
             <td><Link className="icon-button" href={`/cliente/maquinas/${machine.id}`} aria-label={`Abrir ${machine.name}`}><ChevronRight size={18} /></Link></td>
           </tr>)}</tbody>
-        </table></div>
-        {filtered.length === 0 && <div className="machine-empty"><Search size={28} /><strong>Nenhuma máquina encontrada</strong><p>Revise os filtros ou cadastre um novo equipamento.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
+        </table></div> : <div className="machine-empty"><Search size={28} /><strong>Nenhuma máquina encontrada</strong><p>Revise os filtros ou limpe a busca para ver os equipamentos.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
         <TablePagination from={paged.from} to={paged.to} total={paged.total} page={paged.page} totalPages={paged.totalPages} onPageChange={goToPage} />
       </section>
     </div>

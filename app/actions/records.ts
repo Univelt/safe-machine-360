@@ -77,50 +77,119 @@ export async function createMachineAction(formData: FormData) {
   const unitId = text(formData, "unitId");
   const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId } });
   if (!unit) throw new Error("Unidade inválida para a empresa.");
-  const hrnCurrent = text(formData, "hrnCurrent");
-  const hrnResidual = optional(formData, "hrnResidual");
   const machine = await prisma.machine.create({
     data: {
       companyId,
       unitId,
-      code: text(formData, "code"),
-      name: text(formData, "name"),
-      tag: text(formData, "tag"),
-      serial: text(formData, "serial"),
-      assetTag: optional(formData, "assetTag") ?? text(formData, "tag"),
-      machineType: optional(formData, "machineType"),
-      manufacturer: text(formData, "manufacturer"),
-      model: text(formData, "model"),
-      year: text(formData, "year"),
-      sector: text(formData, "sector"),
-      area: text(formData, "area") || "Geral",
-      capacity: optional(formData, "capacity"),
-      category: (optional(formData, "category") as SafetyCategory | null) ?? null,
-      hrnCurrent,
-      hrnResidual,
-      riskLevel: classifyHrnPair(hrnCurrent, hrnResidual) ?? "BAIXO",
-      energySources: text(formData, "energySources") || "Elétrica",
-      mainSystems: optional(formData, "mainSystems"),
-      usage: optional(formData, "usage"),
-      processCharacteristics: optional(formData, "processCharacteristics"),
-      operatorCount: numberValue(formData, "operatorCount") || null,
-      operatorSkills: optional(formData, "operatorSkills"),
-      mechMaintenanceCount: numberValue(formData, "mechMaintenanceCount") || null,
-      mechMaintenanceSkills: optional(formData, "mechMaintenanceSkills"),
-      elecMaintenanceCount: numberValue(formData, "elecMaintenanceCount") || null,
-      elecMaintenanceSkills: optional(formData, "elecMaintenanceSkills"),
-      equipmentLimits: optional(formData, "equipmentLimits"),
-      observations: optional(formData, "observations"),
-      documentNumber: optional(formData, "documentNumber"),
-      documentRevision: optional(formData, "documentRevision"),
-      status: (text(formData, "status") || "OPERACIONAL") as MachineStatus,
-      description: text(formData, "description") || text(formData, "name"),
+      ...machineFields(formData),
     },
   });
   await writeAudit(companyId, session.id, "MACHINE_CREATED", "Machine", machine.id, `Máquina ${machine.code} cadastrada.`);
   revalidatePath("/cliente/maquinas");
   revalidatePath("/admin/maquinas");
   redirect(`/cliente/maquinas/${machine.id}`);
+}
+
+function machineFields(formData: FormData) {
+  const name = text(formData, "name");
+  const hrnCurrent = text(formData, "hrnCurrent");
+  const hrnResidual = optional(formData, "hrnResidual");
+  return {
+    code: text(formData, "code"),
+    name,
+    tag: text(formData, "tag"),
+    serial: text(formData, "serial"),
+    assetTag: optional(formData, "assetTag") ?? text(formData, "tag"),
+    machineType: optional(formData, "machineType"),
+    manufacturer: text(formData, "manufacturer"),
+    model: text(formData, "model"),
+    year: text(formData, "year"),
+    sector: text(formData, "sector"),
+    area: text(formData, "area") || "Geral",
+    capacity: optional(formData, "capacity"),
+    category: (optional(formData, "category") as SafetyCategory | null) ?? null,
+    hrnCurrent,
+    hrnResidual,
+    riskLevel: classifyHrnPair(hrnCurrent, hrnResidual) ?? "BAIXO",
+    energySources: text(formData, "energySources") || "Elétrica",
+    mainSystems: optional(formData, "mainSystems"),
+    usage: optional(formData, "usage"),
+    processCharacteristics: optional(formData, "processCharacteristics"),
+    operatorCount: numberValue(formData, "operatorCount") || null,
+    operatorSkills: optional(formData, "operatorSkills"),
+    mechMaintenanceCount: numberValue(formData, "mechMaintenanceCount") || null,
+    mechMaintenanceSkills: optional(formData, "mechMaintenanceSkills"),
+    elecMaintenanceCount: numberValue(formData, "elecMaintenanceCount") || null,
+    elecMaintenanceSkills: optional(formData, "elecMaintenanceSkills"),
+    observations: optional(formData, "observations"),
+    documentNumber: optional(formData, "documentNumber"),
+    documentRevision: optional(formData, "documentRevision"),
+    status: (text(formData, "status") || "OPERACIONAL") as MachineStatus,
+    description: text(formData, "description") || name,
+  };
+}
+
+export async function updateMachineAction(formData: FormData) {
+  const session = await requireSession();
+  if (!canManageCompany(session)) throw new Error("Sem permissão para editar máquinas.");
+  const machineId = text(formData, "machineId");
+  const machine = await prisma.machine.findFirst({
+    where: { id: machineId, ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
+    select: { id: true, companyId: true },
+  });
+  if (!machine) throw new Error("Máquina não encontrada.");
+  const unitId = text(formData, "unitId");
+  const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId: machine.companyId }, select: { id: true } });
+  if (!unit) throw new Error("Unidade inválida para a empresa da máquina.");
+
+  const updated = await prisma.machine.update({ where: { id: machine.id }, data: { ...machineFields(formData), unitId } });
+  await writeAudit(machine.companyId, session.id, "MACHINE_UPDATED", "Machine", machine.id, `Dados da máquina ${updated.code} atualizados.`);
+  revalidatePath("/cliente/maquinas");
+  revalidatePath("/admin/maquinas");
+  revalidatePath(`/cliente/maquinas/${machine.id}`);
+  redirect(`/cliente/maquinas/${machine.id}`);
+}
+
+export async function deleteMachineAction(formData: FormData) {
+  const session = await requireSession();
+  if (!canManageCompany(session)) throw new Error("Sem permissão para excluir máquinas.");
+  const machine = await prisma.machine.findFirst({
+    where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
+    include: {
+      photos: { select: { url: true } },
+      documents: { select: { fileUrl: true } },
+      riskAssessments: { select: { fileUrl: true } },
+      activities: { include: { attachments: { select: { url: true } } } },
+    },
+  });
+  if (!machine) throw new Error("Máquina não encontrada.");
+
+  const storedFiles = [
+    ...machine.photos.map((photo) => photo.url),
+    ...machine.documents.map((document) => document.fileUrl),
+    ...machine.riskAssessments.map((assessment) => assessment.fileUrl),
+    ...machine.activities.flatMap((activity) => activity.attachments.map((attachment) => attachment.url)),
+  ].filter((file): file is string => Boolean(file));
+
+  await prisma.$transaction(async (transaction) => {
+    await transaction.machine.delete({ where: { id: machine.id } });
+    await transaction.auditLog.create({
+      data: {
+        companyId: machine.companyId,
+        userId: session.id,
+        action: "MACHINE_DELETED",
+        entity: "Machine",
+        entityId: machine.id,
+        summary: `Máquina ${machine.code} e seus registros vinculados foram excluídos.`,
+      },
+    });
+  });
+
+  await Promise.all(storedFiles.map((file) => deleteStoredFile(file)));
+  revalidatePath("/cliente/maquinas");
+  revalidatePath("/admin/maquinas");
+  revalidatePath("/");
+  redirect(isSuperAdmin(session) ? "/admin/maquinas" : "/cliente/maquinas");
 }
 
 export async function uploadMachinePhotoAction(formData: FormData) {

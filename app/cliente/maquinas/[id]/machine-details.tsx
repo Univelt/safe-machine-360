@@ -5,8 +5,9 @@ import type { MachineView } from "@/lib/data/types";
 import { categoryLabels, checklistAnswerLabels, checklistAnswerTones, documentStatusLabels, documentTone, formatDate, formatDateTime } from "@/lib/labels";
 import { RiskBadge } from "@/app/components/risk-badge";
 import { classifyHrn } from "@/lib/labels";
+import { MachineDeleteForm } from "./machine-delete-form";
 
-export function MachineDetails({ machine, canMutate }: { machine: MachineView; canMutate: boolean }) {
+export function MachineDetails({ machine, canMutate, canManage }: { machine: MachineView; canMutate: boolean; canManage: boolean }) {
   const latestApr = machine.riskAssessments[0];
   const latestPlan = machine.actionPlans[0];
   const cover = machine.photos.find((photo) => photo.url);
@@ -18,7 +19,22 @@ export function MachineDetails({ machine, canMutate }: { machine: MachineView; c
       <section className="machine-hero">
         <div className="machine-hero-image">{cover?.url ? <img src={cover.url} alt={cover.caption} /> : <><Wrench size={38} /><span>Foto do equipamento</span></>}</div>
         <div className="machine-hero-copy"><div className="machine-hero-meta"><span className={`badge ${machine.riskTone}`}><span />{machine.risk}</span><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></div><h1>{machine.name}</h1><p>{machine.code} · TAG {machine.tag} · Série {machine.serial}</p><div className="machine-location"><span><MapPin size={15} /> {machine.unitName} · {machine.sector} · {machine.area}</span><span><Settings2 size={15} /> {machine.manufacturer} · {machine.model}</span></div></div>
-        {canMutate && <div className="machine-hero-actions"><Link className="button secondary" href={`/cliente/maquinas/${machine.id}/apr`}>Cadastrar APR</Link><Link className="button primary" href={`/cliente/documentos/novo?machineId=${machine.id}`}>Anexar documento</Link></div>}
+        {(canManage || canMutate) && <div className="machine-hero-actions">
+          {canManage && <Link className="button secondary" href={`/cliente/maquinas/${machine.id}/editar`}>Editar máquina</Link>}
+          {canManage && <MachineDeleteForm machine={{
+            id: machine.id,
+            name: machine.name,
+            code: machine.code,
+            documents: machine.documents.length,
+            riskAssessments: machine.riskAssessments.length,
+            checklists: machine.checklists.length,
+            actionPlans: machine.actionPlans.length,
+            activities: machine.activities.length,
+            photos: machine.photos.length,
+          }} />}
+          {canMutate && <Link className="button secondary" href={`/cliente/maquinas/${machine.id}/apr`}>Cadastrar APR</Link>}
+          {canMutate && <Link className="button primary" href={`/cliente/documentos/novo?machineId=${machine.id}`}>Anexar documento</Link>}
+        </div>}
       </section>
 
       <nav className="detail-tabs" aria-label="Seções da máquina"><a className="active" href="#visao-geral">Visão geral</a><a href="#dados-tecnicos">Dados técnicos</a><a href="#fotos">Fotos</a><a href="#documentos">Documentos</a><a href="#apr">Análise de risco</a><a href="#checklist">Checklist</a><a href="#plano">Plano de ação</a><a href="#atividades">Atividades</a></nav>

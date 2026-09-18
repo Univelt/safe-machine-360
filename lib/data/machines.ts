@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { SessionUser } from "@/lib/auth/session";
+import { isSuperAdmin } from "@/lib/auth/session";
 import { computeDocumentStatus, documentKindLabels, formatDate, machineStatusLabels, riskLabels, riskTones } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
 import { companyFilter } from "./scope";
@@ -71,6 +72,7 @@ export function toMachineView(machine: MachineRecord): MachineView {
     elecMaintenanceSkills: machine.elecMaintenanceSkills,
     companyId: machine.companyId,
     companyName: machine.company.name,
+    unitId: machine.unitId,
     unitName: machine.unit.name,
     photos: machine.photos
       .filter((photo) => photo.url)
@@ -145,9 +147,9 @@ export async function listUsers() {
   });
 }
 
-export async function listUnits(session: SessionUser) {
+export async function listUnits(session: SessionUser, companyId?: string) {
   return prisma.unit.findMany({
-    where: companyFilter(session),
+    where: { ...companyFilter(session), ...(isSuperAdmin(session) && companyId ? { companyId } : {}) },
     orderBy: { name: "asc" },
   });
 }

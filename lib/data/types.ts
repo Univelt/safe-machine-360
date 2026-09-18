@@ -59,6 +59,7 @@ export type MachineView = {
   elecMaintenanceSkills: string | null;
   companyId: string;
   companyName: string;
+  unitId: string;
   unitName: string;
   photos: MachinePhotoView[];
   documents: MachineDocumentView[];

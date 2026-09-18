@@ -61,24 +61,26 @@ test("scopes client queries by company and keeps admin global", async () => {
 });
 
 test("provides NR-12 machine cadastro, APR, checklist and action plan", async () => {
-  const [form, details, apr, checklist, plan, hrnFields] = await Promise.all([
+  const [form, machineForm, details, apr, checklist, plan, hrnFields] = await Promise.all([
     source("app/cliente/maquinas/nova/page.tsx"),
+    source("app/cliente/maquinas/machine-form.tsx"),
     source("app/cliente/maquinas/[id]/machine-details.tsx"),
     source("app/cliente/maquinas/[id]/apr/page.tsx"),
     source("app/cliente/maquinas/[id]/checklist/page.tsx"),
     source("app/cliente/maquinas/[id]/plano/page.tsx"),
     source("app/components/hrn-fields.tsx"),
   ]);
-  assert.match(form, /HrnFields/);
-  assert.doesNotMatch(form, /Nível de risco|name="riskLevel"/);
-  assert.doesNotMatch(form, /name="equipmentLimits"|name="description"/);
-  assert.match(form, /name="year" type="text"/);
+  assert.match(form, /MachineForm/);
+  assert.match(machineForm, /HrnFields/);
+  assert.doesNotMatch(machineForm, /Nível de risco|name="riskLevel"/);
+  assert.doesNotMatch(machineForm, /name="equipmentLimits"|<label[^>]*>[^<]*(?:limite|descrição)/i);
+  assert.match(machineForm, /name="year" type="text"/);
   assert.match(hrnFields, /name={name}/);
   assert.match(hrnFields, /type="text"/);
   assert.match(hrnFields, /inputMode="numeric"/);
-  assert.match(form, /Função dos operadores/);
-  assert.match(form, /Identificação de riscos - Mecânico/);
-  assert.match(form, /Identificação de riscos - Elétrico/);
+  assert.match(machineForm, /Função dos operadores/);
+  assert.match(machineForm, /Identificação de riscos - Mecânico/);
+  assert.match(machineForm, /Identificação de riscos - Elétrico/);
   assert.match(details, /Documentos vinculados à máquina/);
   assert.match(details, /MachinePhotos/);
   assert.match(apr, /Número do documento \(APR\)/);
