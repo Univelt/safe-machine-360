@@ -215,7 +215,8 @@ th { padding: 10px 14px; background: #fafbfd; color: #7e8a99; font-size: 9px; fo
 td { padding: 11px 14px; border-top: 1px solid #eef2f5; color: var(--muted); font-size: 10px; vertical-align: middle; }
 tbody tr:hover { background: #fbfcfd; }
 .machine-cell { min-width: 220px; display: flex; align-items: center; gap: 10px; }
-.machine-thumb { width: 35px; height: 35px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 8px; background: #edf3f8; color: var(--navy-800); }
+.machine-thumb { width: 56px; height: 48px; display: grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: 8px; background: #edf3f8; color: var(--navy-800); }
+.machine-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .machine-cell > span:last-child { display: flex; flex-direction: column; }
 .machine-cell strong, .table-primary { color: var(--ink); font-size: 10px; }
 .machine-cell small, .table-secondary { display: block; margin-top: 3px; color: var(--subtle); font-size: 9px; }

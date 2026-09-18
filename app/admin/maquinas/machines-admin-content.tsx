@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Plus, Search, Upload, Wrench } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { paginateItems, TablePagination } from "@/app/components/table-pagination";
+import { MachineThumbnail } from "@/app/components/machine-thumbnail";
 import type { MachineView } from "@/lib/data/types";
 import { documentTone } from "@/lib/labels";
 import { RiskBadge } from "@/app/components/risk-badge";
@@ -50,7 +51,7 @@ export function MachinesAdminContent({ machines }: { machines: MachineView[] }) 
             <thead><tr><th>Equipamento</th><th>Empresa</th><th>Setor</th><th>Risco</th><th>Documentação</th><th>Status</th></tr></thead>
             <tbody>{paged.items.map((machine) => (
               <tr key={machine.id}>
-                <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><span className="machine-thumb"><Wrench size={18} /></span><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
+                <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><MachineThumbnail photos={machine.photos} /><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
                 <td><strong className="table-primary">{machine.companyName}</strong></td>
                 <td>{machine.sector}</td>
                 <td><RiskBadge level={machine.riskLevel} /></td>
