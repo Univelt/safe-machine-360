@@ -23,14 +23,14 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
         {canMutate && <AddPhotoModal machineId={machine.id} />}
       </div>
       <div className="machine-section-body photo-gallery">
-        {photos.map((photo) => (
+        {photos.map((photo, index) => (
           <article key={photo.id} className={`photo-preview ${photo.compliant ? "is-ok" : "is-fail"}`}>
             <header className="photo-preview-head">
               <strong>{photo.caption}</strong>
               <small>{formatDate(photo.takenAt)}</small>
             </header>
             <div className="photo-preview-media">
-              <Image src={photo.url ?? ""} alt={`${photo.caption} da máquina ${machine.name}, código ${machine.code}`} width={520} height={320} unoptimized />
+              <Image src={photo.url ?? ""} alt={`Vista da máquina ${machine.name}, código ${machine.code} — foto ${index + 1}`} width={520} height={320} unoptimized />
               <span className={`photo-norm-badge ${photo.compliant ? "ok" : "fail"}`} title={photo.compliant ? "Dentro da norma" : "Fora da norma"}>
                 {photo.compliant ? <Check size={16} strokeWidth={3} /> : <X size={16} strokeWidth={3} />}
                 <span className="sr-only">{photo.compliant ? "Dentro da norma" : "Fora da norma"}</span>

@@ -1047,3 +1047,70 @@ body { line-height: 1.5; }
   .admin-company-list > a dl { grid-column: 2 / span 2; }
   .admin-company-list > a > .admin-status { grid-column: 2; }
 }
+
+/* Acabamento de legibilidade e contexto administrativo */
+.global-scope-note {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -4px 0 14px;
+  padding: 10px 13px;
+  border: 1px solid #cfe0ef;
+  border-radius: var(--radius-sm);
+  color: #3f5d78;
+  background: var(--blue-50);
+  font-size: 13px;
+}
+.global-scope-note svg { flex: 0 0 auto; color: var(--blue-700); }
+.global-scope-note strong { color: var(--navy-900); }
+
+.brand-copy small,
+.tenant-kicker,
+.tenant-button small,
+.nav-count,
+.security-note strong,
+.security-note small,
+.version,
+.global-search kbd,
+.demo-pill,
+.user-avatar,
+.user-copy small,
+.breadcrumb,
+.eyebrow,
+.panel-kicker,
+.dashboard th,
+.dashboard .badge,
+.dashboard .doc-pill,
+.dashboard .operation-status,
+.metric-copy > small,
+.admin-company-list > a dt,
+.admin-company-card dt,
+.admin-status,
+.admin-global-score > span,
+.admin-health-list p,
+.form-summary dt,
+.history-filters label > span,
+.history-technical-row dt {
+  font-size: 12px;
+}
+
+@media (max-width: 680px) {
+  .user-menu,
+  .icon-button,
+  .table-footer button,
+  .table-footer strong,
+  .panel-header .text-button,
+  .checklist-toolbar .machine-search button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .user-menu { justify-content: center; }
+  .user-avatar { width: 40px; height: 40px; }
+  .panel-header .text-button { padding: 0 10px; }
+  .machine-mobile-card dt,
+  .detail-section-select > span {
+    font-size: 12px;
+  }
+  .global-scope-note { align-items: flex-start; }
+}

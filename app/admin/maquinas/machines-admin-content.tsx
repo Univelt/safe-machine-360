@@ -11,7 +11,7 @@ import { documentTone } from "@/lib/labels";
 import { RiskBadge } from "@/app/components/risk-badge";
 import { countActiveMachineFilters, filterMachines, type MachineSortOrder } from "@/lib/machine-filters";
 
-export function MachinesAdminContent({ machines, initialCompany = "all" }: { machines: MachineView[]; initialCompany?: string }) {
+export function MachinesAdminContent({ machines, initialCompany = "all", contextName = null }: { machines: MachineView[]; initialCompany?: string; contextName?: string | null }) {
   const [query, setQuery] = useState("");
   const [company, setCompany] = useState(initialCompany);
   const [sector, setSector] = useState("Todos");
@@ -50,9 +50,9 @@ export function MachinesAdminContent({ machines, initialCompany = "all" }: { mac
 
   return (
     <div className="dashboard admin-list-page">
-      <div className="breadcrumb"><span>Administração</span><ChevronRight size={14} /><strong>Máquinas</strong></div>
+      <div className="breadcrumb"><span>{contextName ?? "Administração"}</span><ChevronRight size={14} /><strong>Máquinas</strong></div>
       <section className="page-heading">
-        <div><span className="eyebrow">Parque multiempresa</span><h1>Máquinas de todos os clientes</h1><p>O administrador Univelt consulta o inventário global. Cada cliente vê apenas a própria empresa.</p></div>
+        <div><span className="eyebrow">{contextName ? "Parque da empresa" : "Parque multiempresa"}</span><h1>{contextName ? `Máquinas da ${contextName}` : "Máquinas de todos os clientes"}</h1><p>{contextName ? `Consulte os equipamentos, riscos e documentos de ${contextName}.` : "Consulte o inventário global de todas as empresas da plataforma."}</p></div>
         <div className="heading-actions">
           <Link className="button secondary" href="/cliente/maquinas/importar"><Upload size={16} /> Importar planilha</Link>
           <Link className="button primary" href="/cliente/maquinas/nova"><Plus size={16} /> Cadastrar máquina</Link>

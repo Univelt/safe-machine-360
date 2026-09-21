@@ -107,6 +107,8 @@ export const auditActionLabels: Record<string, string> = {
   APR_CREATED: "Apreciação de risco cadastrada",
   CHECKLIST_TEMPLATE_CREATED: "Modelo de checklist cadastrado",
   CHECKLIST_ITEM_ADDED: "Item de checklist adicionado",
+  CHECKLIST_CREATED: "Checklist preenchido",
+  MACHINE_IMPORT: "Máquinas importadas",
   ACTION_PLAN_CREATED: "Plano de ação cadastrado",
 };
 

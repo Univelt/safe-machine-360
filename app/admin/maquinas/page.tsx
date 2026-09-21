@@ -11,5 +11,5 @@ export default async function MachinesAdminPage({ searchParams }: { searchParams
   const machines = await listMachines(session);
   const { company } = await searchParams;
   const initialCompany = company && machines.some((machine) => machine.companyName === company) ? company : "all";
-  return <AuthenticatedShell variant="admin"><MachinesAdminContent machines={machines} initialCompany={initialCompany} /></AuthenticatedShell>;
+  return <AuthenticatedShell variant="admin"><MachinesAdminContent machines={machines} initialCompany={initialCompany} contextName={session.companyName} /></AuthenticatedShell>;
 }

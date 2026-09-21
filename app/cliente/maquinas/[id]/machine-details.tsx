@@ -19,7 +19,7 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
       <div className="breadcrumb"><span>{machine.companyName}</span><ChevronRight size={14} /><Link href="/cliente/maquinas">Máquinas</Link><ChevronRight size={14} /><strong>{machine.code}</strong></div>
 
       <section className="machine-hero">
-        <div className="machine-hero-image">{cover?.url ? <Image src={cover.url} alt={`${cover.caption} da máquina ${machine.name}, código ${machine.code}`} width={132} height={108} unoptimized priority /> : <><Wrench size={38} /><span>Foto do equipamento</span></>}</div>
+        <div className="machine-hero-image">{cover?.url ? <Image src={cover.url} alt={`Vista principal da máquina ${machine.name}, código ${machine.code}`} width={132} height={108} unoptimized priority /> : <><Wrench size={38} /><span>Foto do equipamento</span></>}</div>
         <div className="machine-hero-copy"><div className="machine-hero-meta"><span className={`badge ${machine.riskTone}`}><span />{machine.risk}</span><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></div><h1>{machine.name}</h1><p>{machine.code} · TAG {machine.tag} · Série {machine.serial}</p><div className="machine-location"><span><MapPin size={15} /> {machine.unitName} · {machine.sector} · {machine.area}</span><span><Settings2 size={15} /> {machine.manufacturer} · {machine.model}</span></div></div>
         {(canManage || canMutate) && <div className="machine-hero-actions">
           {canManage && <Link className="button secondary" href={`/cliente/maquinas/${machine.id}/editar`}>Editar máquina</Link>}
