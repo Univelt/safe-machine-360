@@ -1081,7 +1081,6 @@ body { line-height: 1.5; }
 .panel-kicker,
 .dashboard th,
 .dashboard .badge,
-.dashboard .doc-pill,
 .dashboard .operation-status,
 .metric-copy > small,
 .admin-company-list > a dt,
@@ -1093,6 +1092,12 @@ body { line-height: 1.5; }
 .history-filters label > span,
 .history-technical-row dt {
   font-size: 12px;
+}
+
+.dashboard .doc-pill {
+  padding: 4px 7px;
+  font-size: 10px;
+  line-height: 1.2;
 }
 
 @media (max-width: 680px) {
