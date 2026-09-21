@@ -27,7 +27,9 @@ test("defines a PostgreSQL schema ready for RDS with tenant keys", async () => {
   assert.match(schema, /model RiskAssessment/);
   assert.match(schema, /model ChecklistTemplate/);
   assert.match(schema, /model ChecklistExecution/);
-  assert.match(schema, /model ActionPlan/);
+  assert.match(schema, /model AuditLog/);
+  assert.match(schema, /enum AuditOperation/);
+  assert.match(schema, /parentId/);
 });
 
 test("authenticates admin and company users on the server", async () => {
@@ -152,9 +154,17 @@ test("lets users upload photos on an existing machine", async () => {
   ]);
   assert.match(photos, /type="file"/);
   assert.match(photos, /uploadMachinePhotoAction/);
+  assert.match(photos, /name="caption"/);
+  assert.match(photos, /name="takenAt"/);
+  assert.match(photos, /name="compliant"/);
   assert.match(photos, /Adicionar foto/);
   assert.match(photos, /Remover foto/);
+  assert.match(photos, /Dentro da norma/);
+  assert.match(photos, /ChangeLog/);
   assert.match(action, /saveMachinePhotoUpload/);
+  assert.match(action, /compliant:/);
+  assert.match(action, /operation:/);
+  assert.match(action, /parentId/);
   assert.match(action, /deleteMachinePhotoAction/);
   assert.match(api, /companyFilter/);
 });

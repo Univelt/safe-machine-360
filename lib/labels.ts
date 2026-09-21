@@ -121,6 +121,7 @@ export const auditEntityLabels: Record<string, string> = {
   RiskAssessment: "Apreciação de risco",
   ChecklistTemplate: "Modelo de checklist",
   ChecklistTemplateItem: "Item de checklist",
+  ChecklistExecution: "Checklist preenchido",
   ActionPlan: "Plano de ação",
 };
 

@@ -5,6 +5,8 @@ export type MachinePhotoView = {
   kind: PhotoKind;
   url: string | null;
   caption: string;
+  takenAt: string;
+  compliant: boolean;
 };
 
 export type MachineDocumentView = {
@@ -62,6 +64,7 @@ export type MachineView = {
   unitId: string;
   unitName: string;
   photos: MachinePhotoView[];
+  lastPhotoChange: { at: string; by: string } | null;
   documents: MachineDocumentView[];
   riskAssessments: Array<{
     id: string;

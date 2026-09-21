@@ -220,12 +220,14 @@ model Machine {
 }
 
 model MachinePhoto {
-  id        String    @id @default(cuid())
-  machineId String
-  kind      PhotoKind
-  url       String?
-  caption   String
-  createdAt DateTime  @default(now())
+  id         String    @id @default(cuid())
+  machineId  String
+  kind       PhotoKind
+  url        String?
+  caption    String
+  takenAt    DateTime  @default(now())
+  compliant  Boolean   @default(true)
+  createdAt  DateTime  @default(now())
 
   machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
 
@@ -406,21 +408,31 @@ model ActionPlanItem {
   actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
 }
 
+enum AuditOperation {
+  CREATE
+  UPDATE
+  DELETE
+}
+
 model AuditLog {
-  id        String   @id @default(cuid())
-  companyId String?
-  userId    String?
-  action    String
-  entity    String
-  entityId  String
-  summary   String
-  createdAt DateTime @default(now())
+  id         String         @id @default(cuid())
+  companyId  String?
+  userId     String?
+  action     String
+  operation  AuditOperation @default(CREATE)
+  entity     String
+  entityId   String
+  parentId   String?
+  summary    String
+  createdAt  DateTime       @default(now())
 
   company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@index([entity, entityId])
+  @@index([parentId])
+  @@index([operation])
 }
 
 model ComplianceSnapshot {

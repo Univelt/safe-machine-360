@@ -5,6 +5,7 @@ import { computeDocumentStatus, documentKindLabels, formatDate, machineStatusLab
 import { prisma } from "@/lib/prisma";
 import { companyFilter } from "./scope";
 import type { MachineView } from "./types";
+import { getLastPhotoChange } from "./audit";
 
 const machineInclude = {
   company: true,
@@ -80,8 +81,11 @@ export function toMachineView(machine: MachineRecord): MachineView {
         id: photo.id,
         kind: photo.kind,
         caption: photo.caption,
+        takenAt: photo.takenAt.toISOString(),
+        compliant: photo.compliant,
         url: `/api/machines/${machine.id}/photos/${photo.id}/file`,
       })),
+    lastPhotoChange: null,
     documents: machine.documents.map((document) => ({
       id: document.id,
       name: document.name,
@@ -112,7 +116,8 @@ export async function getMachine(session: SessionUser, id: string) {
     where: { id, ...companyFilter(session) },
     include: machineInclude,
   });
-  return machine ? toMachineView(machine) : null;
+  if (!machine) return null;
+  return { ...toMachineView(machine), lastPhotoChange: await getLastPhotoChange(machine.id) };
 }
 
 export async function listCompanies() {

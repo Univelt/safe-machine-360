@@ -350,15 +350,33 @@ tbody tr:hover { background: #fbfcfd; }
 .import-row-warning { display: inline-flex; align-items: center; gap: 6px; color: #9a6b12; font-size: 11px; font-weight: 700; }
 .import-row-ok { display: inline-flex; align-items: center; gap: 6px; color: #1f7a43; font-size: 11px; font-weight: 700; }
 .import-confirm-actions { padding: 16px 19px 20px; }
-.photo-gallery { display: flex; flex-wrap: wrap; gap: 12px; }
-.photo-preview { position: relative; width: 140px; height: 140px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #eef3f7; }
-.photo-preview img { width: 100%; height: 100%; object-fit: cover; }
-.photo-remove { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; color: white; background: rgba(15, 23, 42, .72); cursor: pointer; }
-.photo-remove:hover, .photo-remove:disabled { background: rgba(15, 23, 42, .9); }
-.photo-add { width: 140px; height: 140px; }
-.photo-gallery:has(.photo-add:only-child) .photo-add { width: 100%; height: 148px; }
-.photo-add button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 100%; border: 1px dashed var(--line); border-radius: 12px; color: var(--blue-700); background: var(--blue-50); font-size: 12px; font-weight: 700; cursor: pointer; }
-.photo-add button:hover, .photo-add button:disabled { border-color: #80b2d9; background: #f2f8fd; }
+.photo-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; align-items: start; }
+.photo-gallery .empty-copy { grid-column: 1 / -1; }
+.photo-preview { display: flex; flex-direction: column; overflow: hidden; border: 2px solid var(--line); border-radius: var(--radius-md); background: white; }
+.photo-preview.is-ok { border-color: #9dceb5; }
+.photo-preview.is-fail { border-color: var(--red); }
+.photo-preview-head { display: flex; flex-direction: column; gap: 2px; padding: 11px 12px 9px; }
+.photo-preview-head strong { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.photo-preview-head small { color: var(--muted); font-size: 11px; font-weight: 600; }
+.photo-preview-media { position: relative; background: #eef3f7; }
+.photo-preview-media img { display: block; width: 100%; height: 168px; object-fit: cover; }
+.photo-norm-badge { position: absolute; left: 10px; bottom: 10px; display: grid; place-items: center; width: 32px; height: 32px; border: 2px solid white; border-radius: 50%; color: white; box-shadow: 0 2px 8px rgba(7, 23, 43, .18); }
+.photo-norm-badge.ok { background: var(--green); }
+.photo-norm-badge.fail { background: var(--red); }
+.photo-preview .photo-remove { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 44px; padding: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; color: var(--red); background: white; font-size: 12px; font-weight: 700; cursor: pointer; }
+.photo-preview .photo-remove:hover, .photo-preview .photo-remove:disabled { color: #981f29; background: #fff5f6; }
+.photo-modal { max-width: none; }
+.photo-modal[open] { position: fixed; inset: 0; display: grid; place-items: center; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0; background: transparent; overflow: auto; }
+.photo-modal::backdrop { background: rgba(7, 23, 43, .48); }
+.photo-modal-card { width: min(440px, 100%); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: white; box-shadow: var(--shadow-md); }
+.photo-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 18px 0; }
+.photo-modal-head h3 { margin: 4px 0 0; font-family: "Manrope Variable", sans-serif; font-size: 18px; letter-spacing: -.03em; }
+.photo-modal-form { display: grid; gap: 14px; padding: 18px; }
+.photo-modal-form label { display: flex; flex-direction: column; gap: 6px; color: #334256; font-size: 13px; font-weight: 700; }
+.photo-modal-form input[type="text"], .photo-modal-form input[type="date"], .photo-modal-form input[type="file"] { min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; }
+.photo-modal-form .checkbox-row { flex-direction: row; align-items: center; margin: 0; color: var(--ink); font-size: 13px; font-weight: 700; }
+.photo-modal-form .checkbox-row input { width: 16px; height: 16px; accent-color: var(--green); }
+.photo-modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 .machine-hero-image { overflow: hidden; }
 .machine-hero-image img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
 .action-table { display: grid; gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--line); }
@@ -930,11 +948,6 @@ body { line-height: 1.5; }
 
 .machine-mobile-list { display: none; }
 .detail-section-select { display: none; }
-.photo-preview { width: 220px; height: auto; min-height: 160px; padding-bottom: 44px; border-radius: var(--radius-md); }
-.photo-preview img { min-height: 160px; }
-.photo-preview form { position: absolute; inset: auto 0 0; }
-.photo-preview .photo-remove { position: static; width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-top: 1px solid var(--line); border-radius: 0; color: var(--red); background: white; font-size: 12px; font-weight: 700; }
-.photo-preview .photo-remove:hover, .photo-preview .photo-remove:disabled { color: #981f29; background: #fff5f6; }
 .machine-hero-image { background: #edf3f7; }
 
 @media (max-width: 1180px) {
@@ -1004,9 +1017,11 @@ body { line-height: 1.5; }
   .machine-hero { grid-template-columns: 84px 1fr; }
   .machine-hero-image { height: 84px; }
   .machine-hero-copy > p, .machine-location { font-size: 12px; }
-  .photo-gallery { display: grid; grid-template-columns: 1fr; }
-  .photo-preview, .photo-add { width: 100%; }
-  .photo-preview img { width: 100%; }
+  .photo-gallery { grid-template-columns: 1fr; }
+  .photo-preview { width: 100%; }
+  .photo-preview-media img { height: 200px; }
+  .photo-modal-actions { flex-direction: column-reverse; }
+  .photo-modal-actions .button { width: 100%; }
   .record-form { grid-template-columns: 1fr; padding: 16px; }
   .record-form label.full, .form-actions, .form-summary, .form-field.full { grid-column: auto; }
   .form-summary dl { grid-template-columns: 1fr; }

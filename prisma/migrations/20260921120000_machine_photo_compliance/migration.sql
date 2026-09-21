@@ -1,0 +1,5 @@
+ALTER TABLE "MachinePhoto" ADD COLUMN "takenAt" TIMESTAMP(3);
+UPDATE "MachinePhoto" SET "takenAt" = "createdAt" WHERE "takenAt" IS NULL;
+ALTER TABLE "MachinePhoto" ALTER COLUMN "takenAt" SET NOT NULL;
+ALTER TABLE "MachinePhoto" ALTER COLUMN "takenAt" SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "MachinePhoto" ADD COLUMN "compliant" BOOLEAN NOT NULL DEFAULT true;

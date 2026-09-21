@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { ActivityPriority, ActivityStatus, DocumentKind, MachineStatus, SafetyCategory, UserRole } from "@prisma/client";
+import type { ActivityPriority, ActivityStatus, AuditOperation, DocumentKind, MachineStatus, SafetyCategory, UserRole } from "@prisma/client";
 import { requireAdmin, requireSession } from "@/lib/auth/guards";
 import { canManageCompany, canMutateOperations, isSuperAdmin } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
@@ -24,8 +24,46 @@ function numberValue(form: FormData, key: string) {
   return Number.isFinite(value) ? value : 0;
 }
 
-async function writeAudit(companyId: string | null, userId: string, action: string, entity: string, entityId: string, summary: string) {
-  await prisma.auditLog.create({ data: { companyId, userId, action, entity, entityId, summary } });
+function dateValue(form: FormData, key: string) {
+  const value = text(form, key);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function checked(form: FormData, key: string) {
+  const value = String(form.get(key) ?? "").toLowerCase();
+  return value === "true" || value === "on" || value === "1";
+}
+
+function operationFromAction(action: string): AuditOperation {
+  if (/DELETED|REMOVED/.test(action)) return "DELETE";
+  if (/UPDATED|PROGRESS/.test(action)) return "UPDATE";
+  return "CREATE";
+}
+
+async function writeAudit(
+  companyId: string | null,
+  userId: string,
+  action: string,
+  entity: string,
+  entityId: string,
+  summary: string,
+  extra?: { operation?: AuditOperation; parentId?: string | null },
+) {
+  await prisma.auditLog.create({
+    data: {
+      companyId,
+      userId,
+      action,
+      operation: extra?.operation ?? operationFromAction(action),
+      entity,
+      entityId,
+      parentId: extra?.parentId ?? null,
+      summary,
+    },
+  });
 }
 
 export async function createCompanyAction(formData: FormData) {
@@ -178,6 +216,7 @@ export async function deleteMachineAction(formData: FormData) {
         companyId: machine.companyId,
         userId: session.id,
         action: "MACHINE_DELETED",
+        operation: "DELETE",
         entity: "Machine",
         entityId: machine.id,
         summary: `Máquina ${machine.code} e seus registros vinculados foram excluídos.`,
@@ -199,21 +238,26 @@ export async function uploadMachinePhotoAction(formData: FormData) {
     where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
   });
   if (!machine) throw new Error("Máquina não encontrada.");
-  const files = getUploadedFiles(formData, "file");
-  if (!files.length) throw new Error("Selecione uma foto.");
-
-  for (const file of files) {
-    assertAllowedImage(file);
-    const photo = await prisma.machinePhoto.create({
-      data: { machineId: machine.id, kind: "OTHER", caption: file.name || "Foto do equipamento" },
-    });
-    const saved = await saveMachinePhotoUpload(file, machine.companyId, machine.id, photo.id);
-    await prisma.machinePhoto.update({
-      where: { id: photo.id },
-      data: { url: saved.relativePath, caption: file.name || photo.caption },
-    });
-  }
-  await writeAudit(machine.companyId, session.id, "MACHINE_PHOTO_UPLOADED", "Machine", machine.id, `${files.length} foto(s) enviada(s) para ${machine.code}.`);
+  const file = getUploadedFile(formData, "file");
+  if (!file) throw new Error("Selecione uma foto.");
+  assertAllowedImage(file);
+  const caption = text(formData, "caption");
+  if (!caption) throw new Error("Informe o nome da foto.");
+  const photo = await prisma.machinePhoto.create({
+    data: {
+      machineId: machine.id,
+      kind: "OTHER",
+      caption,
+      takenAt: dateValue(formData, "takenAt"),
+      compliant: checked(formData, "compliant"),
+    },
+  });
+  const saved = await saveMachinePhotoUpload(file, machine.companyId, machine.id, photo.id);
+  await prisma.machinePhoto.update({
+    where: { id: photo.id },
+    data: { url: saved.relativePath },
+  });
+  await writeAudit(machine.companyId, session.id, "MACHINE_PHOTO_UPLOADED", "MachinePhoto", photo.id, `Foto "${caption}" enviada para ${machine.code}.`, { parentId: machine.id });
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   revalidatePath("/cliente/maquinas");
 }
@@ -233,7 +277,7 @@ export async function deleteMachinePhotoAction(formData: FormData) {
   if (!photo) throw new Error("Foto não encontrada.");
   if (photo.url) await deleteStoredFile(photo.url);
   await prisma.machinePhoto.delete({ where: { id: photo.id } });
-  await writeAudit(photo.machine.companyId, session.id, "MACHINE_PHOTO_DELETED", "MachinePhoto", photo.id, `Foto removida de ${photo.machine.code}.`);
+  await writeAudit(photo.machine.companyId, session.id, "MACHINE_PHOTO_DELETED", "MachinePhoto", photo.id, `Foto "${photo.caption}" removida de ${photo.machine.code}.`, { parentId: machineId });
   revalidatePath(`/cliente/maquinas/${machineId}`);
   revalidatePath("/cliente/maquinas");
 }
@@ -266,7 +310,7 @@ export async function createDocumentAction(formData: FormData) {
       data: { fileUrl: saved.relativePath, format: saved.format, size: saved.size },
     });
   }
-  await writeAudit(machine.companyId, session.id, "DOCUMENT_CREATED", "Document", document.id, `Documento ${document.name} vinculado a ${machine.code}.`);
+  await writeAudit(machine.companyId, session.id, "DOCUMENT_CREATED", "Document", document.id, `Documento ${document.name} vinculado a ${machine.code}.`, { parentId: machine.id });
   revalidatePath("/cliente/documentos");
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   redirect("/cliente/documentos");
@@ -303,7 +347,7 @@ export async function createActivityAction(formData: FormData) {
     },
   });
   await saveActivityFiles(activity.id, machine.companyId, formData);
-  await writeAudit(machine.companyId, session.id, "ACTIVITY_CREATED", "Activity", activity.id, `Atividade ${activity.title} criada para ${machine.code}.`);
+  await writeAudit(machine.companyId, session.id, "ACTIVITY_CREATED", "Activity", activity.id, `Atividade ${activity.title} criada para ${machine.code}.`, { parentId: machine.id });
   revalidatePath("/cliente/atividades");
   redirect(`/cliente/atividades/${activity.id}`);
 }
@@ -419,7 +463,7 @@ export async function createRiskAssessmentAction(formData: FormData) {
       riskLevel: assessment.riskLevel,
     },
   });
-  await writeAudit(machine.companyId, session.id, "APR_CREATED", "RiskAssessment", assessment.id, `APR ${assessment.documentNumber} cadastrada.`);
+  await writeAudit(machine.companyId, session.id, "APR_CREATED", "RiskAssessment", assessment.id, `APR ${assessment.documentNumber} cadastrada.`, { parentId: machine.id });
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   redirect(`/cliente/maquinas/${machine.id}`);
 }
@@ -508,16 +552,7 @@ export async function createChecklistAction(formData: FormData) {
       },
     },
   });
-  await prisma.auditLog.create({
-    data: {
-      companyId: machine.companyId,
-      userId: session.id,
-      action: "CHECKLIST_CREATED",
-      entity: "ChecklistExecution",
-      entityId: execution.id,
-      summary: `Checklist ${template.name} preenchido para ${machine.code} por ${session.name}.`,
-    },
-  });
+  await writeAudit(machine.companyId, session.id, "CHECKLIST_CREATED", "ChecklistExecution", execution.id, `Checklist ${template.name} preenchido para ${machine.code} por ${session.name}.`, { parentId: machine.id });
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   redirect(`/cliente/maquinas/${machine.id}`);
 }
@@ -547,7 +582,7 @@ export async function createActionPlanAction(formData: FormData) {
       },
     },
   });
-  await writeAudit(machine.companyId, session.id, "ACTION_PLAN_CREATED", "ActionPlan", plan.id, `Plano de ação criado para ${machine.code}.`);
+  await writeAudit(machine.companyId, session.id, "ACTION_PLAN_CREATED", "ActionPlan", plan.id, `Plano de ação criado para ${machine.code}.`, { parentId: machine.id });
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   redirect(`/cliente/maquinas/${machine.id}`);
 }

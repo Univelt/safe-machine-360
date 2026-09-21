@@ -188,6 +188,7 @@ export async function confirmMachineImportAction(formData: FormData): Promise<Ma
         companyId,
         userId: session.id,
         action: "MACHINE_IMPORT",
+        operation: "CREATE",
         entity: "Machine",
         entityId: companyId,
         summary: `${toCreate.length} máquina(s) importada(s) da planilha NR-12.`,
