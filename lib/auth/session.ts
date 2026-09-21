@@ -69,8 +69,8 @@ export async function getSession(): Promise<SessionUser | null> {
     };
   }
 
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
+  const company = await prisma.company.findFirst({
+    where: { id: companyId, status: "ACTIVE" },
     select: {
       id: true,
       name: true,
