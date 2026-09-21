@@ -147,13 +147,15 @@ export async function companyMetrics(session: SessionUser) {
   };
 }
 
-export async function globalMetrics() {
+export async function globalMetrics(session?: SessionUser) {
+  const scopedCompany = session?.companyId ? { companyId: session.companyId } : {};
+  const companyWhere = session?.companyId ? { id: session.companyId } : {};
   const [companies, machines, documents, activities, users] = await Promise.all([
-    prisma.company.findMany({ include: { _count: { select: { units: true, users: true, machines: true } } } }),
-    prisma.machine.findMany(),
-    prisma.document.findMany(),
-    prisma.activity.findMany(),
-    prisma.user.findMany(),
+    prisma.company.findMany({ where: companyWhere, include: { _count: { select: { units: true, users: true, machines: true } } } }),
+    prisma.machine.findMany({ where: scopedCompany }),
+    prisma.document.findMany({ where: scopedCompany }),
+    prisma.activity.findMany({ where: scopedCompany }),
+    prisma.user.findMany({ where: session?.companyId ? { companyId: session.companyId } : {} }),
   ]);
   const highRisk = machines.filter((machine) => machine.riskLevel === "ALTO" || machine.riskLevel === "MUITO_ALTO").length;
   const expired = documents.filter((document) => computeDocumentStatus(document.expirationDate) === "VENCIDO").length;

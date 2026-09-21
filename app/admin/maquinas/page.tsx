@@ -6,8 +6,10 @@ import { listMachines } from "@/lib/data/machines";
 
 export const metadata: Metadata = { title: "Máquinas | Administração" };
 
-export default async function MachinesAdminPage() {
+export default async function MachinesAdminPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
   const session = await requireAdmin();
   const machines = await listMachines(session);
-  return <AuthenticatedShell variant="admin"><MachinesAdminContent machines={machines} /></AuthenticatedShell>;
+  const { company } = await searchParams;
+  const initialCompany = company && machines.some((machine) => machine.companyName === company) ? company : "all";
+  return <AuthenticatedShell variant="admin"><MachinesAdminContent machines={machines} initialCompany={initialCompany} /></AuthenticatedShell>;
 }

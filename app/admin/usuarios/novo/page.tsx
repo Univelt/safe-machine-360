@@ -3,10 +3,12 @@ import Link from "next/link";
 import { AuthenticatedShell } from "../../../components/authenticated-shell";
 import { createUserAction } from "@/app/actions/records";
 import { listCompanies } from "@/lib/data/machines";
+import { requireAdmin } from "@/lib/auth/guards";
 
 export const metadata: Metadata = { title: "Convidar usuário" };
 
 export default async function NewUserPage() {
+  await requireAdmin();
   const companies = await listCompanies();
   return (
     <AuthenticatedShell variant="admin">

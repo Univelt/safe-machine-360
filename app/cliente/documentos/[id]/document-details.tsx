@@ -1,5 +1,6 @@
 import { Calendar, CheckCircle2, ChevronRight, Download, ExternalLink, FileKey2, FileText, History, Link2, LockKeyhole, Paperclip, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import type { DocumentView } from "@/lib/data/types";
 
 export function DocumentDetails({ document, companyName }: { document: DocumentView; companyName: string }) {
@@ -22,7 +23,7 @@ export function DocumentDetails({ document, companyName }: { document: DocumentV
       <div className="detail-main-column">
         <section className={`panel document-preview ${document.hasFile ? "has-file" : ""}`}>
           <header><span>{document.hasFile ? <><Paperclip size={15} /> Arquivo anexado</> : <><LockKeyhole size={15} /> Sem anexo</>}</span><small>{document.hasFile ? `${document.format} · ${document.size}` : "Cadastre novamente com um arquivo para disponibilizar o download"}</small></header>
-          {document.hasFile && isImageFormat(document.format) ? <div className="document-preview-media"><img src={fileHref} alt={document.name} /></div> : <div>
+          {document.hasFile && isImageFormat(document.format) ? <div className="document-preview-media"><Image src={fileHref} alt={document.name} width={1000} height={700} unoptimized /></div> : <div>
             <FileKey2 size={45} />
             <strong>{document.hasFile ? "Documento disponível para a empresa" : "Nenhum arquivo foi anexado neste cadastro"}</strong>
             <p>{document.hasFile ? "O arquivo permanece restrito à empresa da sessão. Visualize em nova aba ou baixe para conferência." : "O registro foi salvo, mas ainda não há um PDF ou imagem vinculado."}</p>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { paginateItems, TablePagination } from "@/app/components/table-pagination";
 import { MachineThumbnail } from "@/app/components/machine-thumbnail";
+import { MachineMobileList } from "@/app/components/machine-mobile-list";
 import type { MachineView } from "@/lib/data/types";
 import { documentTone } from "@/lib/labels";
 import { RiskBadge } from "@/app/components/risk-badge";
@@ -72,7 +73,7 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
       <div className="machine-results-bar"><span><Filter size={14} /><strong>{filtered.length}</strong> equipamentos encontrados {activeFilters > 0 && `· ${activeFilters} filtros ativos`}</span>{activeFilters > 0 && <button type="button" onClick={clearFilters}><X size={14} /> Limpar filtros</button>}</div>
 
       <section className="panel machine-list-panel">
-        {filtered.length > 0 ? <div className="responsive-table"><table className="machine-list-table"><thead><tr><th>Equipamento</th><th>Setor</th><th>Fabricante</th><th>Nível de risco</th><th>Apreciação</th><th>Checklist</th><th>Status</th><th><span className="sr-only">Abrir</span></th></tr></thead>
+        {filtered.length > 0 ? <><div className="responsive-table machine-desktop-list"><table className="machine-list-table"><thead><tr><th>Equipamento</th><th>Setor</th><th>Fabricante</th><th>Nível de risco</th><th>Apreciação</th><th>Checklist</th><th>Status</th><th><span className="sr-only">Abrir</span></th></tr></thead>
           <tbody>{paged.items.map((machine) => <tr key={machine.id}>
             <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><MachineThumbnail photos={machine.photos} /><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
             <td><strong className="table-primary">{machine.sector}</strong><small className="table-secondary">{machine.area}</small></td>
@@ -83,7 +84,7 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
             <td><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></td>
             <td><Link className="icon-button" href={`/cliente/maquinas/${machine.id}`} aria-label={`Abrir ${machine.name}`}><ChevronRight size={18} /></Link></td>
           </tr>)}</tbody>
-        </table></div> : <div className="machine-empty"><Search size={28} /><strong>Nenhuma máquina encontrada</strong><p>Revise os filtros ou limpe a busca para ver os equipamentos.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
+        </table></div><MachineMobileList machines={paged.items} /></> : <div className="machine-empty"><Search size={28} /><strong>Nenhuma máquina encontrada</strong><p>Revise os filtros ou limpe a busca para ver os equipamentos.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
         <TablePagination from={paged.from} to={paged.to} total={paged.total} page={paged.page} totalPages={paged.totalPages} onPageChange={goToPage} />
       </section>
     </div>

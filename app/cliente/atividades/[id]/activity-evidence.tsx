@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, FileText, ImageIcon, LoaderCircle, Plus, X } from "lucide-react";
+import Image from "next/image";
 import { useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { deleteActivityEvidenceAction, uploadActivityEvidenceAction } from "@/app/actions/records";
@@ -14,7 +15,7 @@ export function ActivityEvidence({ activity, canMutate }: { activity: ActivityVi
         {activity.attachments.map((attachment) => (
           <article key={attachment.id} className={attachment.kind === "PHOTO" && attachment.url ? "has-preview" : undefined}>
             {attachment.kind === "PHOTO" && attachment.url ? (
-              <a href={attachment.url} target="_blank" rel="noreferrer"><img src={attachment.url} alt={attachment.name} /></a>
+              <a href={attachment.url} target="_blank" rel="noreferrer"><Image src={attachment.url} alt={attachment.name} width={420} height={280} unoptimized /></a>
             ) : (
               <div className="evidence-file">
                 {attachment.kind === "PHOTO" ? <ImageIcon size={20} /> : <FileText size={20} />}

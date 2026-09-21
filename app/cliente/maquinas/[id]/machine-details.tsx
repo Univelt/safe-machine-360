@@ -1,11 +1,13 @@
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Download, History, MapPin, Settings2, ShieldAlert, Wrench } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { MachinePhotos } from "./machine-photos";
 import type { MachineView } from "@/lib/data/types";
-import { categoryLabels, checklistAnswerLabels, checklistAnswerTones, documentStatusLabels, documentTone, formatDate, formatDateTime } from "@/lib/labels";
+import { categoryLabels, checklistAnswerLabels, checklistAnswerTones, documentStatusLabels, documentTone, formatDate, formatDateTime, photoKindLabels } from "@/lib/labels";
 import { RiskBadge } from "@/app/components/risk-badge";
 import { classifyHrn } from "@/lib/labels";
 import { MachineDeleteForm } from "./machine-delete-form";
+import { MachineSectionNavigation } from "./machine-section-navigation";
 
 export function MachineDetails({ machine, canMutate, canManage }: { machine: MachineView; canMutate: boolean; canManage: boolean }) {
   const latestApr = machine.riskAssessments[0];
@@ -17,7 +19,7 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
       <div className="breadcrumb"><span>{machine.companyName}</span><ChevronRight size={14} /><Link href="/cliente/maquinas">Máquinas</Link><ChevronRight size={14} /><strong>{machine.code}</strong></div>
 
       <section className="machine-hero">
-        <div className="machine-hero-image">{cover?.url ? <img src={cover.url} alt={cover.caption} /> : <><Wrench size={38} /><span>Foto do equipamento</span></>}</div>
+        <div className="machine-hero-image">{cover?.url ? <Image src={cover.url} alt={`${photoKindLabels[cover.kind]} da máquina ${machine.name}, código ${machine.code}`} width={132} height={108} unoptimized priority /> : <><Wrench size={38} /><span>Foto do equipamento</span></>}</div>
         <div className="machine-hero-copy"><div className="machine-hero-meta"><span className={`badge ${machine.riskTone}`}><span />{machine.risk}</span><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></div><h1>{machine.name}</h1><p>{machine.code} · TAG {machine.tag} · Série {machine.serial}</p><div className="machine-location"><span><MapPin size={15} /> {machine.unitName} · {machine.sector} · {machine.area}</span><span><Settings2 size={15} /> {machine.manufacturer} · {machine.model}</span></div></div>
         {(canManage || canMutate) && <div className="machine-hero-actions">
           {canManage && <Link className="button secondary" href={`/cliente/maquinas/${machine.id}/editar`}>Editar máquina</Link>}
@@ -37,7 +39,7 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
         </div>}
       </section>
 
-      <nav className="detail-tabs" aria-label="Seções da máquina"><a className="active" href="#visao-geral">Visão geral</a><a href="#dados-tecnicos">Dados técnicos</a><a href="#fotos">Fotos</a><a href="#documentos">Documentos</a><a href="#apr">Análise de risco</a><a href="#checklist">Checklist</a><a href="#plano">Plano de ação</a><a href="#atividades">Atividades</a></nav>
+      <MachineSectionNavigation />
 
       <div className="detail-layout" id="visao-geral">
         <div className="detail-main-column">
@@ -122,7 +124,7 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
             </div>
           </section>
 
-          <section className="panel detail-section" id="atividades"><div className="panel-header"><div><span className="panel-kicker">Acompanhamento</span><h2>Atividades da máquina</h2></div></div>
+          <section className="panel detail-section" id="atividades"><div className="panel-header"><div><span className="panel-kicker">Acompanhamento</span><h2>Atividades da máquina</h2></div>{canMutate && <Link className="text-button" href={`/cliente/atividades/nova?machineId=${machine.id}`}>Nova atividade <ChevronRight size={16} /></Link>}</div>
             <div className="machine-section-body">
               <div className="machine-timeline">
                 {machine.activities.length === 0 && <p className="empty-copy">Nenhuma atividade vinculada.</p>}
@@ -136,15 +138,15 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
 
         <aside className="detail-side-column">
           <section className="panel risk-summary"><div className="panel-header"><div><span className="panel-kicker">Avaliação de risco</span><h2>Classificação atual</h2></div></div><div className="risk-number"><ShieldAlert size={26} /><strong>{machine.hrn}</strong><span>HRN atual</span></div><dl><div><dt>Nível</dt><dd><RiskBadge level={machine.riskLevel} /></dd></div><div><dt>HRN residual</dt><dd className="hrn-detail-value">{machine.hrnResidual ?? "—"}{machine.hrnResidual && <RiskBadge level={classifyHrn(machine.hrnResidual)} />}</dd></div><div><dt>Categoria</dt><dd>{machine.category ? categoryLabels[machine.category] : "—"}</dd></div><div><dt>Situação NR-12</dt><dd>{machine.status === "Interditada" ? "Adequação necessária" : "Monitorada"}</dd></div></dl></section>
-          <section className="panel quick-facts" id="dados-tecnicos"><div className="panel-header"><div><span className="panel-kicker">Limites do equipamento</span><h2>Características</h2></div></div><dl>
+          <section className="panel quick-facts" id="dados-tecnicos"><div className="panel-header"><div><span className="panel-kicker">Dados técnicos</span><h2>Características operacionais</h2></div></div><dl>
             <div><dt>Fontes de energia</dt><dd>{machine.energy}</dd></div>
             <div><dt>Sistemas</dt><dd>{machine.mainSystems ?? "—"}</dd></div>
             <div><dt>Utilização</dt><dd>{machine.usage ?? "—"}</dd></div>
             <div><dt>Processo</dt><dd>{machine.processCharacteristics ?? "—"}</dd></div>
             <div><dt>Operação</dt><dd>{machine.operatorCount ? `${machine.operatorCount} operador(es)` : "—"}</dd></div>
-            <div><dt>Habilidades</dt><dd>{machine.operatorSkills ?? "—"}</dd></div>
-            <div><dt>Manutenção mecânica</dt><dd>{machine.mechMaintenanceSkills ?? "—"}</dd></div>
-            <div><dt>Manutenção elétrica</dt><dd>{machine.elecMaintenanceSkills ?? "—"}</dd></div>
+            <div><dt>Função dos operadores</dt><dd>{machine.operatorSkills ?? "—"}</dd></div>
+            <div><dt>Identificação de riscos - Mecânico</dt><dd>{machine.mechMaintenanceSkills ?? "—"}</dd></div>
+            <div><dt>Identificação de riscos - Elétrico</dt><dd>{machine.elecMaintenanceSkills ?? "—"}</dd></div>
           </dl></section>
           {machine.observations && <section className="machine-alert"><AlertTriangle size={19} /><div><strong>Observações</strong><p>{machine.observations}</p></div></section>}
           <section className="history-link" id="historico"><History size={17} /><span><strong>Histórico auditável</strong><small>Alterações registradas no banco</small></span><ChevronRight size={17} /></section>

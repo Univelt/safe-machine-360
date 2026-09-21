@@ -15,8 +15,8 @@ type UserRow = {
   companyName: string;
 };
 
-export function UsersAdminContent({ users, metrics }: { users: UserRow[]; metrics: { activeUsers: number; adminUsers: number; invitedUsers: number } }) {
-  const [query, setQuery] = useState(""); const [company, setCompany] = useState("Todas"); const [role, setRole] = useState("Todos");
+export function UsersAdminContent({ users, metrics, initialQuery = "" }: { users: UserRow[]; metrics: { activeUsers: number; adminUsers: number; invitedUsers: number }; initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery); const [company, setCompany] = useState("Todas"); const [role, setRole] = useState("Todos");
   const companies = [...new Set(users.map((user) => user.companyName))];
   const filtered = users.filter((user) => {
     const normalized = query.trim().toLocaleLowerCase("pt-BR");

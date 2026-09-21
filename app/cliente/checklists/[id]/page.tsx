@@ -4,10 +4,10 @@ import Link from "next/link";
 import { ChevronRight, ClipboardCheck } from "lucide-react";
 import { AuthenticatedShell } from "../../../components/authenticated-shell";
 import { ChangeLog } from "../../../components/change-log";
-import { addChecklistItemAction } from "@/app/actions/records";
 import { requireClient } from "@/lib/auth/guards";
 import { canMutateOperations } from "@/lib/auth/session";
 import { getChecklistTemplate } from "@/lib/data/checklists";
+import { ChecklistTemplateItems } from "./checklist-template-items";
 
 export const metadata: Metadata = { title: "Itens do checklist" };
 
@@ -50,28 +50,7 @@ export default async function ChecklistTemplatePage({ params }: { params: Promis
             </div>
             <small>{template.company?.name ?? "Catálogo global Univelt"}</small>
           </div>
-          {template.items.length === 0 ? (
-            <p className="empty-copy checklist-empty">Nenhum item ainda. Adicione o primeiro abaixo.</p>
-          ) : (
-            <ol className="checklist-item-list">
-              {template.items.map((item) => (
-                <li key={item.id}>
-                  <span className="checklist-num">{String(item.number).padStart(2, "0")}</span>
-                  <p>{item.description}</p>
-                </li>
-              ))}
-            </ol>
-          )}
-          {canEdit && (
-            <form className="checklist-add-item" action={addChecklistItemAction}>
-              <input type="hidden" name="templateId" value={template.id} />
-              <label>
-                Novo item
-                <textarea name="description" rows={2} required placeholder="Descrição do item de verificação" />
-              </label>
-              <button className="button primary" type="submit">Adicionar item</button>
-            </form>
-          )}
+          <ChecklistTemplateItems templateId={template.id} items={template.items} canEdit={canEdit} />
           <ChangeLog at={template.lastChange?.at} by={template.lastChange?.by} />
         </section>
       </div>

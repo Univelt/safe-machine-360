@@ -1,8 +1,10 @@
 import type { UserRole } from "@prisma/client";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE = "univelt_session";
+export const COMPANY_CONTEXT_COOKIE = "univelt_company_context";
 export const SESSION_MAX_AGE = 60 * 60 * 12;
 
 export type SessionUser = {
@@ -53,7 +55,45 @@ export async function getSession(): Promise<SessionUser | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return readSessionToken(token);
+  const session = await readSessionToken(token);
+  if (!session || session.role !== "SUPER_ADMIN") return session;
+
+  const companyId = jar.get(COMPANY_CONTEXT_COOKIE)?.value;
+  if (!companyId) {
+    return {
+      ...session,
+      companyId: null,
+      companyName: null,
+      unitId: null,
+      unitName: null,
+    };
+  }
+
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: {
+      id: true,
+      name: true,
+      units: { orderBy: { name: "asc" }, take: 1, select: { id: true, name: true } },
+    },
+  });
+  if (!company) {
+    return {
+      ...session,
+      companyId: null,
+      companyName: null,
+      unitId: null,
+      unitName: null,
+    };
+  }
+
+  return {
+    ...session,
+    companyId: company.id,
+    companyName: company.name,
+    unitId: company.units[0]?.id ?? null,
+    unitName: company.units[0]?.name ?? null,
+  };
 }
 
 export function isSuperAdmin(user: SessionUser | null | undefined) {

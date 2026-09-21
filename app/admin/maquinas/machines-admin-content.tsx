@@ -5,14 +5,15 @@ import Link from "next/link";
 import { useState } from "react";
 import { paginateItems, TablePagination } from "@/app/components/table-pagination";
 import { MachineThumbnail } from "@/app/components/machine-thumbnail";
+import { MachineMobileList } from "@/app/components/machine-mobile-list";
 import type { MachineView } from "@/lib/data/types";
 import { documentTone } from "@/lib/labels";
 import { RiskBadge } from "@/app/components/risk-badge";
 import { countActiveMachineFilters, filterMachines, type MachineSortOrder } from "@/lib/machine-filters";
 
-export function MachinesAdminContent({ machines }: { machines: MachineView[] }) {
+export function MachinesAdminContent({ machines, initialCompany = "all" }: { machines: MachineView[]; initialCompany?: string }) {
   const [query, setQuery] = useState("");
-  const [company, setCompany] = useState("all");
+  const [company, setCompany] = useState(initialCompany);
   const [sector, setSector] = useState("Todos");
   const [risk, setRisk] = useState("Todos");
   const [documentation, setDocumentation] = useState("Todos");
@@ -68,7 +69,7 @@ export function MachinesAdminContent({ machines }: { machines: MachineView[] }) 
       </section>
       <div className="machine-results-bar"><span><Filter size={14} /><strong>{rows.length}</strong> equipamentos encontrados {activeFilters > 0 && `· ${activeFilters} filtros ativos`}</span>{activeFilters > 0 && <button type="button" onClick={clearFilters}><X size={14} /> Limpar filtros</button>}</div>
       <section className="panel admin-user-table">
-        {rows.length > 0 ? <div className="responsive-table">
+        {rows.length > 0 ? <><div className="responsive-table machine-desktop-list">
           <table className="machine-list-table">
             <thead><tr><th>Equipamento</th><th>Empresa</th><th>Setor</th><th>Risco</th><th>Documentação</th><th>Status</th><th><span className="sr-only">Abrir</span></th></tr></thead>
             <tbody>{paged.items.map((machine) => (
@@ -83,7 +84,7 @@ export function MachinesAdminContent({ machines }: { machines: MachineView[] }) 
               </tr>
             ))}</tbody>
           </table>
-        </div> : <div className="machine-empty"><Search size={28} /><strong>Nenhuma máquina encontrada</strong><p>Revise os filtros ou limpe a busca para ver os equipamentos.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
+        </div><MachineMobileList machines={paged.items} /></> : <div className="machine-empty"><Search size={28} /><strong>Nenhuma máquina encontrada</strong><p>Revise os filtros ou limpe a busca para ver os equipamentos.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
         <TablePagination from={paged.from} to={paged.to} total={paged.total} page={paged.page} totalPages={paged.totalPages} onPageChange={goToPage} />
       </section>
     </div>

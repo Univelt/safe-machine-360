@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthenticatedShell } from "../../../components/authenticated-shell";
 import { createCompanyAction } from "@/app/actions/records";
+import { requireAdmin } from "@/lib/auth/guards";
 
 export const metadata: Metadata = { title: "Cadastrar empresa" };
 
-export default function NewCompanyPage() {
+export default async function NewCompanyPage() {
+  await requireAdmin();
   return (
     <AuthenticatedShell variant="admin">
       <div className="dashboard record-page">

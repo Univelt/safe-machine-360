@@ -3,6 +3,7 @@ import { AuthenticatedShell } from "./components/authenticated-shell";
 import { AdminDashboardContent } from "./admin-dashboard-content";
 import { listCompanies } from "@/lib/data/machines";
 import { globalMetrics } from "@/lib/data/catalog";
+import { requireAdmin } from "@/lib/auth/guards";
 
 export const metadata: Metadata = {
   title: "Visão geral | Portal Univelt",
@@ -10,10 +11,12 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [companies, metrics] = await Promise.all([listCompanies(), globalMetrics()]);
+  const session = await requireAdmin();
+  const [allCompanies, metrics] = await Promise.all([listCompanies(), globalMetrics(session)]);
+  const companies = session.companyId ? allCompanies.filter((company) => company.id === session.companyId) : allCompanies;
   return (
     <AuthenticatedShell variant="admin">
-      <AdminDashboardContent companies={companies} metrics={metrics} />
+      <AdminDashboardContent companies={companies} metrics={metrics} contextName={session.companyName} />
     </AuthenticatedShell>
   );
 }

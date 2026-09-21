@@ -91,6 +91,46 @@ export const roleLabels: Record<UserRole, string> = {
   VIEWER: "Visualizador",
 };
 
+export const auditActionLabels: Record<string, string> = {
+  COMPANY_CREATED: "Empresa cadastrada",
+  USER_CREATED: "Usuário cadastrado",
+  MACHINE_CREATED: "Máquina cadastrada",
+  MACHINE_UPDATED: "Máquina atualizada",
+  MACHINE_DELETED: "Máquina excluída",
+  MACHINE_PHOTO_UPLOADED: "Fotos adicionadas",
+  MACHINE_PHOTO_DELETED: "Foto removida",
+  DOCUMENT_CREATED: "Documento cadastrado",
+  ACTIVITY_CREATED: "Atividade cadastrada",
+  ACTIVITY_PROGRESS_UPDATED: "Progresso atualizado",
+  ACTIVITY_EVIDENCE_UPLOADED: "Evidência adicionada",
+  ACTIVITY_EVIDENCE_DELETED: "Evidência removida",
+  APR_CREATED: "Apreciação de risco cadastrada",
+  CHECKLIST_TEMPLATE_CREATED: "Modelo de checklist cadastrado",
+  CHECKLIST_ITEM_ADDED: "Item de checklist adicionado",
+  ACTION_PLAN_CREATED: "Plano de ação cadastrado",
+};
+
+export const auditEntityLabels: Record<string, string> = {
+  Company: "Empresa",
+  User: "Usuário",
+  Machine: "Máquina",
+  MachinePhoto: "Foto da máquina",
+  Document: "Documento",
+  Activity: "Atividade",
+  ActivityAttachment: "Evidência da atividade",
+  RiskAssessment: "Apreciação de risco",
+  ChecklistTemplate: "Modelo de checklist",
+  ChecklistTemplateItem: "Item de checklist",
+  ActionPlan: "Plano de ação",
+};
+
+export function humanizeAuditCode(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/^./, (letter) => letter.toLocaleUpperCase("pt-BR"));
+}
+
 export const checklistAnswerLabels: Record<ChecklistAnswer, string> = {
   SIM: "Sim",
   NAO: "Não",

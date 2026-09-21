@@ -3,7 +3,6 @@
 import {
   Activity,
   BarChart3,
-  Bell,
   Building2,
   ChevronDown,
   ClipboardCheck,
@@ -15,8 +14,6 @@ import {
   Menu,
   Presentation,
   CircleHelp,
-  Search,
-  Settings,
   ShieldCheck,
   Users,
   X,
@@ -27,6 +24,9 @@ import { useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session";
 import { initialsOf, roleLabels } from "@/lib/labels";
 import { Brand } from "./brand";
+import { CompanyContextSelector } from "./company-context-selector";
+import { GlobalSearch } from "./global-search";
+import { NotificationPopover } from "./notification-popover";
 
 const adminNavigation = [
   { label: "Visão geral", icon: LayoutDashboard, href: "/" },
@@ -38,7 +38,6 @@ const adminNavigation = [
   { label: "Empresas", icon: Building2, divider: true, href: "/admin/empresas" },
   { label: "Usuários", icon: Users, href: "/admin/usuarios" },
   { label: "Histórico", icon: History, href: "/admin/historico" },
-  { label: "Configurações", icon: Settings, href: "#" },
 ];
 
 const clientNavigation = [
@@ -55,9 +54,10 @@ type PortalShellProps = {
   children: React.ReactNode;
   variant?: "admin" | "client";
   session: SessionUser;
+  companyOptions?: Array<{ id: string; name: string }>;
 };
 
-export function PortalShell({ children, variant = "admin", session }: PortalShellProps) {
+export function PortalShell({ children, variant = "admin", session, companyOptions = [] }: PortalShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [menuUser, setMenuUser] = useState(false);
@@ -65,10 +65,6 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
   const router = useRouter();
   const isClient = variant === "client";
   const navigation = isClient ? clientNavigation : adminNavigation;
-
-  useEffect(() => {
-    setCollapsed(window.localStorage.getItem("univelt-sidebar-collapsed") === "1");
-  }, []);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -93,7 +89,6 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
     }
     setCollapsed((value) => {
       const next = !value;
-      window.localStorage.setItem("univelt-sidebar-collapsed", next ? "1" : "0");
       return next;
     });
   }
@@ -117,15 +112,15 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
         </div>
 
         <div className="tenant-card">
-          <span className="tenant-kicker">{isClient ? "Sua empresa" : "Escopo administrativo"}</span>
+          <span className="tenant-kicker">{isClient ? "Sua empresa" : "Contexto administrativo"}</span>
           <div className="tenant-button">
             <span className="tenant-avatar">{(session.companyName ?? "UV").slice(0, 2).toUpperCase()}</span>
             <span>
-              <strong>{isClient ? session.companyName ?? "Empresa" : "Visão global Univelt"}</strong>
-              <small>{isClient ? session.unitName ?? "Unidade vinculada" : "Todas as empresas"}</small>
+              <strong>{isClient ? session.companyName ?? "Empresa" : session.companyName ?? "Visão global Univelt"}</strong>
+              <small>{isClient ? session.unitName ?? "Unidade vinculada" : session.companyName ? "Operando nesta empresa" : "Todas as empresas"}</small>
             </span>
-            {!isClient && <ChevronDown size={16} />}
           </div>
+          {!isClient && <div className="sidebar-context"><CompanyContextSelector companies={companyOptions} activeCompanyId={session.companyId} /></div>}
         </div>
 
         <nav className="sidebar-nav">
@@ -158,7 +153,7 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
             <ShieldCheck size={18} />
             <span>
               <strong>{isClient ? "Dados da sua empresa" : "Ambiente protegido"}</strong>
-              <small>{isClient ? `Acesso restrito a ${session.companyName}` : "Acesso monitorado"}</small>
+              <small>{isClient ? `Acesso restrito a ${session.companyName ?? "sua empresa"}` : session.companyName ? `Contexto: ${session.companyName}` : "Acesso monitorado"}</small>
             </span>
           </div>
           <span className="version">Portal Univelt · Fase 2</span>
@@ -174,23 +169,17 @@ export function PortalShell({ children, variant = "admin", session }: PortalShel
               className="icon-button mobile-menu"
               type="button"
               onClick={toggleSidebar}
-              aria-label={menuOpen || collapsed ? "Expandir menu" : "Recolher menu"}
+              aria-label={menuOpen ? "Fechar menu" : collapsed ? "Expandir menu" : "Recolher menu"}
               aria-expanded={menuOpen || !collapsed}
             >
               <Menu size={21} />
             </button>
-            <div className="global-search">
-              <Search size={18} aria-hidden="true" />
-              <label className="sr-only" htmlFor="global-search">Buscar no portal</label>
-              <input id="global-search" type="search" placeholder={isClient ? "Buscar máquina, código ou TAG" : "Buscar empresa, máquina ou usuário"} />
-              <kbd>⌘ K</kbd>
-            </div>
+            <GlobalSearch isClient={isClient} />
           </div>
           <div className="topbar-actions">
-            <span className="demo-pill">{isClient ? "Área do cliente" : "Administração Univelt"}</span>
-            <button className="icon-button notification-button" type="button" aria-label="Notificações">
-              <Bell size={20} />
-            </button>
+            {!isClient && <CompanyContextSelector companies={companyOptions} activeCompanyId={session.companyId} />}
+            <span className="demo-pill">{isClient ? "Área do cliente" : session.companyName ? "Empresa selecionada" : "Todas as empresas"}</span>
+            <NotificationPopover />
             <div className="user-menu-wrap">
               <button className="user-menu" type="button" onClick={() => setMenuUser((value) => !value)} aria-label={`Abrir menu de ${session.name}`}>
                 <span className="user-avatar">{initialsOf(session.name)}</span>

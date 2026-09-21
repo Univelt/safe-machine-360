@@ -160,15 +160,17 @@ test("lets users upload photos on an existing machine", async () => {
 });
 
 test("lets users attach evidence and update activity progress", async () => {
-  const [createPage, evidence, progress, details, action, api] = await Promise.all([
+  const [createPage, createForm, evidence, progress, details, action, api] = await Promise.all([
     source("app/cliente/atividades/nova/page.tsx"),
+    source("app/cliente/atividades/nova/activity-form.tsx"),
     source("app/cliente/atividades/[id]/activity-evidence.tsx"),
     source("app/cliente/atividades/[id]/activity-progress.tsx"),
     source("app/cliente/atividades/[id]/activity-details.tsx"),
     source("app/actions/records.ts"),
     source("app/api/activities/[id]/attachments/[attachmentId]/file/route.ts"),
   ]);
-  assert.match(createPage, /type="file"/);
+  assert.match(createPage, /ActivityForm/);
+  assert.match(createForm, /type="file"/);
   assert.match(evidence, /Anexar evidência/);
   assert.match(progress, /updateActivityProgressAction/);
   assert.match(details, /ChangeLog/);

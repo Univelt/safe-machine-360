@@ -25,6 +25,9 @@ export function ActivitiesContent({ activities, companyName, canCreate }: { acti
       <article><span className="activity-metric-icon green"><CheckCircle2 size={19} /></span><div><strong>{activities.filter((item) => item.status === "Concluída").length}</strong><span>Concluídas</span></div></article>
     </section>
 
+    {activities.length === 0 && <div className="panel state-message"><CircleDashed size={28} /><strong>Nenhuma atividade cadastrada</strong><p>Crie a primeira atividade para acompanhar responsáveis, prazos e evidências.</p>{canCreate && <Link className="button primary" href="/cliente/atividades/nova"><Plus size={16} /> Criar primeira atividade</Link>}</div>}
+
+    {activities.length > 0 && <>
     <section className="activity-filter-panel"><label className="machine-search"><Search size={18} /><span className="sr-only">Buscar atividades</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar atividade, máquina, código ou responsável" /></label><label className="filter-select"><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option>Todos</option><option>Aberta</option><option>Em andamento</option><option>Concluída</option><option>Atrasada</option></select><ChevronDown size={15} /></label><label className="filter-select"><span>Prioridade</span><select value={priority} onChange={(event) => setPriority(event.target.value)}><option>Todas</option><option>Baixa</option><option>Média</option><option>Alta</option><option>Crítica</option></select><ChevronDown size={15} /></label>{activeFilters > 0 && <button className="clear-document-filters" type="button" onClick={clearFilters}><X size={14} /> Limpar filtros</button>}</section>
 
     <div className="activity-board-head"><span><strong>{filtered.length}</strong> atividades encontradas</span></div>
@@ -34,7 +37,8 @@ export function ActivitiesContent({ activities, companyName, canCreate }: { acti
       <div className="activity-progress"><div><span>Progresso</span><strong>{activity.progress}%</strong></div><span className="activity-progress-track"><span style={{ width: `${activity.progress}%` }} /></span></div>
       <div className="activity-card-end"><span className={`priority-label ${priorityTone(activity.priority)}`}>{activity.priority}</span><span className={`activity-status-label ${statusTone(activity.status)}`}>{activity.status}</span><small><Paperclip size={13} /> {activity.evidenceCount}</small><Link className="icon-button" href={`/cliente/atividades/${activity.id}`} aria-label={`Abrir ${activity.title}`}><ChevronRight size={18} /></Link></div>
     </article>)}</section>
-    {filtered.length === 0 && <div className="panel machine-empty"><Search size={28} /><strong>Nenhuma atividade encontrada</strong><p>Revise os filtros aplicados.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
+    {filtered.length === 0 && <div className="panel state-message"><Search size={28} /><strong>Nenhuma atividade corresponde aos filtros</strong><p>Altere a busca, o status ou a prioridade para ampliar os resultados.</p><button className="button secondary" type="button" onClick={clearFilters}>Limpar filtros</button></div>}
+    </>}
   </div>;
 }
 

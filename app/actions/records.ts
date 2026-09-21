@@ -275,18 +275,27 @@ export async function createDocumentAction(formData: FormData) {
 export async function createActivityAction(formData: FormData) {
   const session = await requireSession();
   if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  const title = text(formData, "title").trim();
+  const responsible = text(formData, "responsible").trim();
+  const description = text(formData, "description").trim();
+  const dueDateValue = text(formData, "dueDate");
+  if (!title || !responsible || !description || !dueDateValue) {
+    throw new Error("Preencha máquina, título, responsável, data prevista e descrição.");
+  }
+  const dueDate = new Date(dueDateValue);
+  if (Number.isNaN(dueDate.getTime())) throw new Error("Data prevista inválida.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
   if (!machine) throw new Error("Máquina não encontrada.");
   const activity = await prisma.activity.create({
     data: {
       companyId: machine.companyId,
       machineId: machine.id,
-      title: text(formData, "title"),
+      title,
       type: text(formData, "type") || "Ação corretiva",
-      description: text(formData, "description"),
-      responsible: text(formData, "responsible"),
+      description,
+      responsible,
       responsibleEmail: optional(formData, "responsibleEmail"),
-      dueDate: new Date(text(formData, "dueDate") || Date.now()),
+      dueDate,
       executedAt: optional(formData, "executedAt") ? new Date(text(formData, "executedAt")) : null,
       status: (text(formData, "status") || "ABERTA") as ActivityStatus,
       priority: (text(formData, "priority") || "MEDIA") as ActivityPriority,

@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ClipboardCheck, Download, FileText, ShieldAlert, TrendingUp, Wrench } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ClipboardCheck, Download, FileText, ShieldAlert, Wrench } from "lucide-react";
 
 export function ReportsContent({
   companyName,

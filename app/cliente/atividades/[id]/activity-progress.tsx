@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { updateActivityProgressAction } from "@/app/actions/records";
 
@@ -9,7 +9,6 @@ const presets = [0, 25, 50, 75, 100];
 export function ActivityProgress({ activityId, progress, canMutate }: { activityId: string; progress: number; canMutate: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [value, setValue] = useState(progress);
-  useEffect(() => { setValue(progress); }, [progress]);
 
   function commit(next: number) {
     const clamped = Math.min(100, Math.max(0, Math.round(next)));

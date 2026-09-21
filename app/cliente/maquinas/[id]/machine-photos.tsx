@@ -1,10 +1,12 @@
 "use client";
 
-import { LoaderCircle, Plus, X } from "lucide-react";
+import { LoaderCircle, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { deleteMachinePhotoAction, uploadMachinePhotoAction } from "@/app/actions/records";
 import type { MachineView } from "@/lib/data/types";
+import { photoKindLabels } from "@/lib/labels";
 
 export function MachinePhotos({ machine, canMutate }: { machine: MachineView; canMutate: boolean }) {
   const photos = machine.photos.filter((photo) => photo.url);
@@ -14,12 +16,14 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
       <div className="machine-section-body photo-gallery">
         {photos.map((photo) => (
           <article key={photo.id} className="photo-preview">
-            <img src={photo.url ?? undefined} alt={photo.caption} />
+            <Image src={photo.url ?? ""} alt={`${photoKindLabels[photo.kind]} da máquina ${machine.name}, código ${machine.code}`} width={520} height={320} unoptimized />
             {canMutate && (
-              <form action={deleteMachinePhotoAction}>
+              <form action={deleteMachinePhotoAction} onSubmit={(event) => {
+                if (!window.confirm(`Remover esta foto de ${machine.name}? Esta ação não pode ser desfeita.`)) event.preventDefault();
+              }}>
                 <input type="hidden" name="machineId" value={machine.id} />
                 <input type="hidden" name="photoId" value={photo.id} />
-                <RemovePhotoButton />
+                <RemovePhotoButton machineName={machine.name} />
               </form>
             )}
           </article>
@@ -62,11 +66,12 @@ function AddPhotoButton({ onPick }: { onPick: () => void }) {
   );
 }
 
-function RemovePhotoButton() {
+function RemovePhotoButton({ machineName }: { machineName: string }) {
   const { pending } = useFormStatus();
   return (
-    <button className="photo-remove" type="submit" disabled={pending} aria-label="Remover foto">
-      {pending ? <LoaderCircle className="spin" size={14} /> : <X size={14} />}
+    <button className="photo-remove" type="submit" disabled={pending} aria-label={`Remover foto de ${machineName}`}>
+      {pending ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}
+      <span>{pending ? "Removendo" : "Remover"}</span>
     </button>
   );
 }

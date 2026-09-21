@@ -4,11 +4,16 @@ import { AuthenticatedShell } from "../../../components/authenticated-shell";
 import { createDocumentAction } from "@/app/actions/records";
 import { requireClient } from "@/lib/auth/guards";
 import { listMachines } from "@/lib/data/machines";
+import { isSuperAdmin } from "@/lib/auth/session";
+import { CompanyContextRequired } from "@/app/components/company-context-required";
 
 export const metadata: Metadata = { title: "Cadastrar documento" };
 
 export default async function NewDocumentPage({ searchParams }: { searchParams: Promise<{ machineId?: string }> }) {
   const session = await requireClient();
+  if (isSuperAdmin(session) && !session.companyId) {
+    return <AuthenticatedShell variant="client"><CompanyContextRequired action="vincular um documento" /></AuthenticatedShell>;
+  }
   const machineId = (await searchParams).machineId;
   const machines = await listMachines(session);
   return (
