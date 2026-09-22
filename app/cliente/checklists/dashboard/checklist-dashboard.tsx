@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ChecklistDashboardData } from "@/lib/data/checklist-dashboard";
 import { checklistExecutionOutcome } from "@/lib/checklist-analytics";
+import { InfoHint } from "@/app/components/info-hint";
 
 const ALL = "ALL";
 
@@ -87,14 +88,14 @@ export function ChecklistDashboard({ data }: { data: ChecklistDashboardData }) {
       </section>
 
       <section className="checklist-kpi-grid" aria-label="Indicadores de checklists">
-        <Kpi icon={<ClipboardCheck />} label="Execuções" value={executions.length} />
-        <Kpi icon={<Wrench />} label="Máquinas avaliadas" value={evaluatedMachines} />
-        <Kpi icon={<ShieldCheck />} label="Conformidade" value={`${compliance}%`} tone="good" />
-        <Kpi icon={<CheckCircle2 />} label="Respostas conformes" value={`${yes} · ${compliance}%`} tone="good" />
-        <Kpi icon={<XCircle />} label="Não conformidades" value={`${no} · ${nonCompliance}%`} tone="danger" />
-        <Kpi icon={<MinusCircle />} label="Não aplicáveis" value={na} />
-        <Kpi icon={<AlertTriangle />} label="Respostas pendentes" value={missingAnswers} tone="warning" />
-        <Kpi icon={<Building2 />} label="Máquinas sem preenchimento" value={unfilledMachines} tone="warning" />
+        <Kpi icon={<ClipboardCheck />} label="Execuções" value={executions.length} help="Quantidade de checklists preenchidos dentro dos filtros selecionados." />
+        <Kpi icon={<Wrench />} label="Máquinas avaliadas" value={evaluatedMachines} help="Quantidade de máquinas diferentes que possuem ao menos uma execução no recorte atual." />
+        <Kpi icon={<ShieldCheck />} label="Conformidade" value={`${compliance}%`} tone="good" help="Percentual de respostas “Sim” entre as respostas aplicáveis. Itens N/A não entram no cálculo." />
+        <Kpi icon={<CheckCircle2 />} label="Respostas conformes" value={`${yes} · ${compliance}%`} tone="good" help="Total de respostas marcadas como “Sim” e sua participação entre as respostas aplicáveis." />
+        <Kpi icon={<XCircle />} label="Não conformidades" value={`${no} · ${nonCompliance}%`} tone="danger" help="Soma das respostas “Não” e “Parcial”, com o percentual entre as respostas aplicáveis." />
+        <Kpi icon={<MinusCircle />} label="Não aplicáveis" value={na} help="Itens marcados como N/A. Eles são exibidos no total, mas não alteram o percentual de conformidade." />
+        <Kpi icon={<AlertTriangle />} label="Respostas pendentes" value={missingAnswers} tone="warning" help="Itens ativos do modelo que ainda não possuem uma resposta registrada nas execuções exibidas." />
+        <Kpi icon={<Building2 />} label="Máquinas sem preenchimento" value={unfilledMachines} tone="warning" help="Máquinas do recorte atual que não possuem execução de checklist correspondente aos filtros." />
       </section>
 
       {data.executions.length === 0 ? (
@@ -130,8 +131,8 @@ export function ChecklistDashboard({ data }: { data: ChecklistDashboardData }) {
   );
 }
 
-function Kpi({ icon, label, value, tone = "neutral" }: { icon: React.ReactNode; label: string; value: string | number; tone?: "neutral" | "good" | "danger" | "warning" }) {
-  return <article className={`checklist-kpi ${tone}`}><span>{icon}</span><div><strong>{value}</strong><small>{label}</small></div></article>;
+function Kpi({ icon, label, value, help, tone = "neutral" }: { icon: React.ReactNode; label: string; value: string | number; help: string; tone?: "neutral" | "good" | "danger" | "warning" }) {
+  return <article className={`checklist-kpi ${tone}`}><span>{icon}</span><div><strong>{value}</strong><small className="metric-label-with-info">{label}<InfoHint label={`Como é calculado: ${label}`}>{help}</InfoHint></small></div></article>;
 }
 
 function Distribution({ title, items, onSelect }: { title: string; items: Array<{ label: string; value: number }>; onSelect: (label: string) => void }) {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { MachineView } from "@/lib/data/types";
 import { formatDateTime } from "@/lib/labels";
 import { compareChecklistAnswers, summarizeChecklistAnswers } from "@/lib/checklist-analytics";
+import { InfoHint } from "@/app/components/info-hint";
 
 export function MachineChecklistDashboard({ machine }: { machine: MachineView }) {
   const latest = machine.checklists[0];
@@ -21,19 +22,19 @@ export function MachineChecklistDashboard({ machine }: { machine: MachineView })
     <section className="panel machine-checklist-dashboard" id="checklist-dashboard">
       <div className="panel-header"><div><span className="panel-kicker">Dashboard do checklist</span><h2>{latest.template.name}</h2></div><Link className="text-button" href={`#checklist-execution-${latest.id}`}>Abrir preenchimento completo</Link></div>
       <div className="machine-checklist-summary">
-        <div className="machine-checklist-score"><strong>{compliance}%</strong><span>Conformidade atual</span></div>
+        <div className="machine-checklist-score"><strong>{compliance}%</strong><span className="metric-label-with-info">Conformidade atual<InfoHint label="Como é calculada a conformidade atual">Percentual de respostas “Sim” entre as respostas aplicáveis da execução mais recente. Itens N/A não entram no cálculo.</InfoHint></span></div>
         <dl>
           <div><dt><CalendarClock size={15} /> Última execução</dt><dd>{formatDateTime(latest.executedAt)}</dd></div>
           <div><dt><UserRound size={15} /> Responsável</dt><dd>{latest.executedBy}</dd></div>
           <div><dt><CheckCircle2 size={15} /> Sim</dt><dd>{counts.yes}</dd></div>
-          <div><dt><XCircle size={15} /> Não / parcial</dt><dd>{counts.no}</dd></div>
+          <div><dt><XCircle size={15} /> Não / parcial <InfoHint label="O que significa Não ou parcial">Respostas “Não” e “Parcial” são tratadas como não conformidades.</InfoHint></dt><dd>{counts.no}</dd></div>
           <div><dt><MinusCircle size={15} /> N/A</dt><dd>{counts.na}</dd></div>
-          <div><dt><AlertTriangle size={15} /> Não preenchidos</dt><dd>{counts.missing}</dd></div>
+          <div><dt><AlertTriangle size={15} /> Não preenchidos <InfoHint label="O que são itens não preenchidos">Itens ativos do modelo que ainda não possuem resposta nesta execução.</InfoHint></dt><dd>{counts.missing}</dd></div>
         </dl>
       </div>
 
       <div className="machine-checklist-comparison">
-        <div className="comparison-heading"><div><span className="panel-kicker">Comparativo</span><h3>Execução atual x anterior</h3></div>{previous && <small>Anterior: {formatDateTime(previous.executedAt)}</small>}</div>
+        <div className="comparison-heading"><div><span className="panel-kicker">Comparativo</span><h3 className="heading-with-info">Execução atual x anterior <InfoHint label="Como funciona o comparativo">Compara a execução mais recente com a execução anterior do mesmo modelo de checklist.</InfoHint></h3></div>{previous && <small>Anterior: {formatDateTime(previous.executedAt)}</small>}</div>
         {previous ? <div className="comparison-grid">
           <ComparisonCard icon={<ArrowUpRight />} label="Melhoraram" items={comparison.improved} tone="good" />
           <ComparisonCard icon={<ArrowDownRight />} label="Pioraram" items={comparison.worsened} tone="danger" />
