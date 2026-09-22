@@ -9,6 +9,7 @@ const sections = [
   ["fotos", "Fotos"],
   ["documentos", "Documentos"],
   ["apr", "Análise de risco"],
+  ["checklist-dashboard", "Dashboard checklist"],
   ["checklist", "Checklist"],
   ["plano", "Plano de ação"],
   ["atividades", "Atividades"],

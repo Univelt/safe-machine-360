@@ -1,4 +1,4 @@
-import type { ChecklistAnswer, PhotoKind, RiskLevel, SafetyCategory } from "@prisma/client";
+import type { ChecklistAnswer, PhotoKind, RiskLevel, RiskOrigin, SafetyCategory } from "@prisma/client";
 
 export type MachinePhotoView = {
   id: string;
@@ -30,6 +30,8 @@ export type MachineView = {
   model: string;
   year: string;
   riskLevel: RiskLevel;
+  riskOrigin: RiskOrigin;
+  manualRiskLevel: RiskLevel | null;
   risk: string;
   riskTone: string;
   appreciation: string;
@@ -84,12 +86,16 @@ export type MachineView = {
     executedBy: string;
     notes: string | null;
     template: { id: string; name: string };
-    answers: Array<{ id: string; result: ChecklistAnswer; item: { number: number; description: string } }>;
+    answers: Array<{ id: string; result: ChecklistAnswer; itemId: string; item: { id: string; number: number; description: string } }>;
   }>;
   actionPlans: Array<{
     id: string;
     title: string;
+    createdAt: Date;
+    checklistExecutionId: string | null;
+    checklistExecution: { id: string; template: { name: string }; executedAt: Date } | null;
     items: Array<{ id: string; sequence: number; location: string; nonconformity: string; action: string; responsible: string }>;
+    attachments: Array<{ id: string; name: string; format: string; size: string; sizeBytes: number; fileUrl: string | null; uploadedBy: string; createdAt: Date }>;
   }>;
   activities: Array<{
     id: string;

@@ -65,6 +65,7 @@ export function getUploadedFiles(form: FormData, key: string) {
 }
 
 const IMAGE_FORMATS = new Set(["PNG", "JPG", "WEBP"]);
+const ACTION_PLAN_DOCUMENT_FORMATS = new Set(["PDF", "DOC", "DOCX"]);
 
 export function assertAllowedUpload(file: File) {
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -83,6 +84,18 @@ export function assertAllowedImage(file: File) {
   if (!format || !IMAGE_FORMATS.has(format)) {
     throw new Error("Anexe uma imagem JPG, PNG ou WEBP.");
   }
+}
+
+export function assertAllowedActionPlanDocument(file: File) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("O anexo deve ter no máximo 20 MB.");
+  }
+  const extensionFormat = FORMAT_BY_EXTENSION[extensionOf(file.name)];
+  const mimeFormat = FORMAT_BY_MIME[file.type];
+  if (!extensionFormat || !mimeFormat || extensionFormat !== mimeFormat || !ACTION_PLAN_DOCUMENT_FORMATS.has(extensionFormat)) {
+    throw new Error("Anexe um arquivo PDF, DOC ou DOCX válido.");
+  }
+  return extensionFormat;
 }
 
 async function persistUpload(file: File, format: string, segments: string[]) {
@@ -119,6 +132,11 @@ export async function saveMachinePhotoUpload(file: File, companyId: string, mach
 export async function saveActivityEvidenceUpload(file: File, companyId: string, activityId: string, attachmentId: string) {
   assertAllowedUpload(file);
   return persistUpload(file, detectFormat(file) ?? "PDF", ["activities", companyId, activityId, attachmentId]);
+}
+
+export async function saveActionPlanAttachmentUpload(file: File, companyId: string, actionPlanId: string, attachmentId: string) {
+  const format = assertAllowedActionPlanDocument(file);
+  return persistUpload(file, format, ["action-plans", companyId, actionPlanId, attachmentId]);
 }
 
 export function evidenceKindForFile(file: File) {

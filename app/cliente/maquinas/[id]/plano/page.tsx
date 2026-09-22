@@ -5,6 +5,7 @@ import { AuthenticatedShell } from "../../../../components/authenticated-shell";
 import { createActionPlanAction } from "@/app/actions/records";
 import { requireClient } from "@/lib/auth/guards";
 import { getMachine } from "@/lib/data/machines";
+import { ActionPlanDraftAttachments } from "./action-plan-draft-attachments";
 
 export const metadata: Metadata = { title: "Plano de ação NR-12" };
 
@@ -24,6 +25,8 @@ export default async function NewActionPlanPage({ params }: { params: Promise<{ 
           <label className="full">Ação<textarea name="action" rows={3} required /></label>
           <label>Referência<input name="reference" placeholder="Projeto conceitual" /></label>
           <label>Responsável<input name="responsible" required defaultValue={session.name} /></label>
+          <label className="full">Checklist relacionado<select name="checklistExecutionId" defaultValue=""><option value="">Plano geral da máquina</option>{machine.checklists.map((execution) => <option key={execution.id} value={execution.id}>{execution.template.name} · {new Intl.DateTimeFormat("pt-BR").format(execution.executedAt)}</option>)}</select></label>
+          <ActionPlanDraftAttachments />
           <div className="form-actions"><button className="button primary" type="submit">Salvar plano</button></div>
         </form>
       </div>

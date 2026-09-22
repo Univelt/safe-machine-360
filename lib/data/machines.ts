@@ -14,7 +14,7 @@ const machineInclude = {
   documents: { orderBy: { issueDate: "desc" as const } },
   riskAssessments: { orderBy: { issuedAt: "desc" as const } },
   checklists: { include: { answers: { include: { item: true } }, template: true }, orderBy: { executedAt: "desc" as const } },
-  actionPlans: { include: { items: { orderBy: { sequence: "asc" as const } } }, orderBy: { createdAt: "desc" as const } },
+  actionPlans: { include: { items: { orderBy: { sequence: "asc" as const } }, attachments: { where: { fileUrl: { not: null } }, orderBy: { createdAt: "desc" as const } }, checklistExecution: { select: { id: true, template: { select: { name: true } }, executedAt: true } } }, orderBy: { createdAt: "desc" as const } },
   activities: { include: { attachments: true }, orderBy: { dueDate: "asc" as const } },
 } satisfies Prisma.MachineInclude;
 
@@ -42,6 +42,8 @@ export function toMachineView(machine: MachineRecord): MachineView {
     model: machine.model,
     year: machine.year,
     riskLevel: machine.riskLevel,
+    riskOrigin: machine.riskOrigin,
+    manualRiskLevel: machine.manualRiskLevel,
     risk: riskLabels[machine.riskLevel],
     riskTone: riskTones[machine.riskLevel],
     appreciation: appreciation.label,

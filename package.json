@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts",
+    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts tests/checklist-evolution.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:up": "docker compose up -d postgres",

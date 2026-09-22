@@ -2,13 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { ActivityPriority, ActivityStatus, AuditOperation, DocumentKind, MachineStatus, SafetyCategory, UserRole } from "@prisma/client";
+import type { ActivityPriority, ActivityStatus, AuditOperation, DocumentKind, MachineStatus, RiskLevel, SafetyCategory, UserRole } from "@prisma/client";
 import { requireAdmin, requireSession } from "@/lib/auth/guards";
 import { canManageCompany, canMutateOperations, isSuperAdmin } from "@/lib/auth/session";
+import { canManageChecklistTemplate } from "@/lib/checklist-permissions";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
-import { assertAllowedImage, assertAllowedUpload, deleteStoredFile, evidenceKindForFile, getUploadedFile, getUploadedFiles, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload } from "@/lib/storage";
+import { assertAllowedActionPlanDocument, assertAllowedImage, assertAllowedUpload, deleteStoredFile, evidenceKindForFile, formatFileSize, getUploadedFile, getUploadedFiles, saveActionPlanAttachmentUpload, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload } from "@/lib/storage";
 import { classifyHrnPair } from "@/lib/labels";
+import { resolveMachineRisk } from "@/lib/machine-risk";
 
 function text(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
@@ -132,6 +134,8 @@ function machineFields(formData: FormData) {
   const name = text(formData, "name");
   const hrnCurrent = text(formData, "hrnCurrent");
   const hrnResidual = optional(formData, "hrnResidual");
+  const riskOrigin = text(formData, "riskOrigin") === "MANUAL" ? "MANUAL" as const : "AUTOMATIC" as const;
+  const resolvedRisk = resolveMachineRisk({ origin: riskOrigin, manualRiskLevel: optional(formData, "manualRiskLevel") as RiskLevel | null, hrnCurrent, hrnResidual });
   return {
     code: text(formData, "code"),
     name,
@@ -148,7 +152,7 @@ function machineFields(formData: FormData) {
     category: (optional(formData, "category") as SafetyCategory | null) ?? null,
     hrnCurrent,
     hrnResidual,
-    riskLevel: classifyHrnPair(hrnCurrent, hrnResidual) ?? "BAIXO",
+    ...resolvedRisk,
     energySources: text(formData, "energySources") || "Elétrica",
     mainSystems: optional(formData, "mainSystems"),
     usage: optional(formData, "usage"),
@@ -460,7 +464,7 @@ export async function createRiskAssessmentAction(formData: FormData) {
       category: assessment.category,
       hrnCurrent: String(assessment.hrnCurrent),
       hrnResidual: String(assessment.hrnResidual),
-      riskLevel: assessment.riskLevel,
+      riskLevel: machine.riskOrigin === "MANUAL" ? machine.riskLevel : assessment.riskLevel,
     },
   });
   await writeAudit(machine.companyId, session.id, "APR_CREATED", "RiskAssessment", assessment.id, `APR ${assessment.documentNumber} cadastrada.`, { parentId: machine.id });
@@ -500,16 +504,15 @@ export async function addChecklistItemAction(formData: FormData) {
   const template = await prisma.checklistTemplate.findFirst({
     where: {
       id: templateId,
+      isActive: true,
       ...(isSuperAdmin(session) ? {} : { OR: [{ companyId: session.companyId }, { companyId: null }] }),
     },
     include: { items: true },
   });
   if (!template) throw new Error("Checklist não encontrado.");
-  if (template.companyId && !isSuperAdmin(session) && template.companyId !== session.companyId) {
-    throw new Error("Sem permissão.");
-  }
+  assertChecklistOwnership(session, template.companyId);
   const nextNumber = template.items.reduce((max, item) => Math.max(max, item.number), 0) + 1;
-  await prisma.$transaction([
+  const [item] = await prisma.$transaction([
     prisma.checklistTemplateItem.create({
       data: { templateId: template.id, number: nextNumber, description },
     }),
@@ -518,9 +521,131 @@ export async function addChecklistItemAction(formData: FormData) {
       data: { updatedAt: new Date() },
     }),
   ]);
-  await writeAudit(template.companyId, session.id, "CHECKLIST_ITEM_ADDED", "ChecklistTemplateItem", template.id, `Item ${nextNumber} incluído em ${template.name}.`);
+  await writeAudit(template.companyId, session.id, "CHECKLIST_ITEM_ADDED", "ChecklistTemplateItem", item.id, `Item ${nextNumber} incluído em ${template.name}.`, { parentId: template.id });
   revalidatePath(`/cliente/checklists/${template.id}`);
   revalidatePath("/cliente/checklists");
+}
+
+export type ChecklistMutationState = { ok: boolean; message: string };
+
+function mutationError(error: unknown) {
+  return error instanceof Error ? error.message : "Não foi possível concluir a alteração.";
+}
+
+function assertChecklistOwnership(session: Awaited<ReturnType<typeof requireSession>>, companyId: string | null) {
+  if (!canManageChecklistTemplate(session, companyId)) {
+    if (!companyId && !isSuperAdmin(session)) throw new Error("Somente a Univelt pode alterar um modelo global.");
+    throw new Error("Sem permissão para alterar checklists.");
+  }
+}
+
+export async function updateChecklistTemplateAction(_state: ChecklistMutationState, formData: FormData): Promise<ChecklistMutationState> {
+  try {
+    const session = await requireSession();
+    const template = await prisma.checklistTemplate.findUnique({ where: { id: text(formData, "templateId") } });
+    if (!template) throw new Error("Checklist não encontrado.");
+    assertChecklistOwnership(session, template.companyId);
+    const name = text(formData, "name");
+    if (!name) throw new Error("Informe o nome do checklist.");
+    await prisma.checklistTemplate.update({ where: { id: template.id }, data: { name, description: optional(formData, "description") } });
+    await writeAudit(template.companyId, session.id, "CHECKLIST_TEMPLATE_UPDATED", "ChecklistTemplate", template.id, `Checklist ${name} atualizado.`, { operation: "UPDATE" });
+    revalidatePath("/cliente/checklists");
+    revalidatePath(`/cliente/checklists/${template.id}`);
+    return { ok: true, message: "Checklist atualizado com sucesso." };
+  } catch (error) {
+    return { ok: false, message: mutationError(error) };
+  }
+}
+
+export async function setChecklistTemplateActiveAction(_state: ChecklistMutationState, formData: FormData): Promise<ChecklistMutationState> {
+  try {
+    const session = await requireSession();
+    const template = await prisma.checklistTemplate.findUnique({
+      where: { id: text(formData, "templateId") },
+      include: { _count: { select: { executions: true } }, items: { select: { _count: { select: { answers: true } } } } },
+    });
+    if (!template) throw new Error("Checklist não encontrado.");
+    assertChecklistOwnership(session, template.companyId);
+    const restore = text(formData, "intent") === "restore";
+    if (restore) {
+      await prisma.checklistTemplate.update({ where: { id: template.id }, data: { isActive: true, archivedAt: null } });
+      await writeAudit(template.companyId, session.id, "CHECKLIST_TEMPLATE_RESTORED", "ChecklistTemplate", template.id, `Checklist ${template.name} reativado.`, { operation: "UPDATE" });
+      revalidatePath("/cliente/checklists");
+      revalidatePath(`/cliente/checklists/${template.id}`);
+      return { ok: true, message: "Checklist reativado." };
+    }
+
+    const historyCount = await prisma.auditLog.count({
+      where: { entity: "ChecklistTemplate", entityId: template.id, action: { notIn: ["CHECKLIST_TEMPLATE_CREATED"] } },
+    });
+    const hasOperationalHistory = template._count.executions > 0 || template.items.some((item) => item._count.answers > 0) || historyCount > 0;
+    if (hasOperationalHistory) {
+      await prisma.checklistTemplate.update({ where: { id: template.id }, data: { isActive: false, archivedAt: new Date() } });
+      await writeAudit(template.companyId, session.id, "CHECKLIST_TEMPLATE_ARCHIVED", "ChecklistTemplate", template.id, `Checklist ${template.name} desativado com o histórico preservado.`, { operation: "UPDATE" });
+      revalidatePath("/cliente/checklists");
+      revalidatePath(`/cliente/checklists/${template.id}`);
+      return { ok: true, message: "Checklist desativado. Os preenchimentos históricos foram preservados." };
+    }
+
+    await prisma.checklistTemplate.delete({ where: { id: template.id } });
+    await writeAudit(template.companyId, session.id, "CHECKLIST_TEMPLATE_DELETED", "ChecklistTemplate", template.id, `Checklist ${template.name} excluído sem registros vinculados.`, { operation: "DELETE" });
+    revalidatePath("/cliente/checklists");
+    return { ok: true, message: "Checklist sem histórico excluído." };
+  } catch (error) {
+    return { ok: false, message: mutationError(error) };
+  }
+}
+
+export async function updateChecklistItemAction(_state: ChecklistMutationState, formData: FormData): Promise<ChecklistMutationState> {
+  try {
+    const session = await requireSession();
+    const item = await prisma.checklistTemplateItem.findUnique({ where: { id: text(formData, "itemId") }, include: { template: true } });
+    if (!item) throw new Error("Item não encontrado.");
+    assertChecklistOwnership(session, item.template.companyId);
+    const description = text(formData, "description");
+    if (!description) throw new Error("Informe a descrição do item.");
+    await prisma.checklistTemplateItem.update({ where: { id: item.id }, data: { description } });
+    await prisma.checklistTemplate.update({ where: { id: item.templateId }, data: { updatedAt: new Date() } });
+    await writeAudit(item.template.companyId, session.id, "CHECKLIST_ITEM_UPDATED", "ChecklistTemplateItem", item.id, `Item ${item.number} de ${item.template.name} atualizado.`, { operation: "UPDATE", parentId: item.templateId });
+    revalidatePath(`/cliente/checklists/${item.templateId}`);
+    return { ok: true, message: "Item atualizado." };
+  } catch (error) {
+    return { ok: false, message: mutationError(error) };
+  }
+}
+
+export async function setChecklistItemActiveAction(_state: ChecklistMutationState, formData: FormData): Promise<ChecklistMutationState> {
+  try {
+    const session = await requireSession();
+    const item = await prisma.checklistTemplateItem.findUnique({
+      where: { id: text(formData, "itemId") },
+      include: { template: true, _count: { select: { answers: true } } },
+    });
+    if (!item) throw new Error("Item não encontrado.");
+    assertChecklistOwnership(session, item.template.companyId);
+    const restore = text(formData, "intent") === "restore";
+    if (restore) {
+      await prisma.checklistTemplateItem.update({ where: { id: item.id }, data: { isActive: true, archivedAt: null } });
+      await writeAudit(item.template.companyId, session.id, "CHECKLIST_ITEM_RESTORED", "ChecklistTemplateItem", item.id, `Item ${item.number} reativado em ${item.template.name}.`, { operation: "UPDATE", parentId: item.templateId });
+      revalidatePath(`/cliente/checklists/${item.templateId}`);
+      return { ok: true, message: "Item reativado." };
+    }
+    const historyCount = await prisma.auditLog.count({
+      where: { entity: "ChecklistTemplateItem", entityId: item.id, action: { notIn: ["CHECKLIST_ITEM_ADDED"] } },
+    });
+    if (item._count.answers > 0 || historyCount > 0) {
+      await prisma.checklistTemplateItem.update({ where: { id: item.id }, data: { isActive: false, archivedAt: new Date() } });
+      await writeAudit(item.template.companyId, session.id, "CHECKLIST_ITEM_ARCHIVED", "ChecklistTemplateItem", item.id, `Item ${item.number} desativado em ${item.template.name}; respostas anteriores preservadas.`, { operation: "UPDATE", parentId: item.templateId });
+      revalidatePath(`/cliente/checklists/${item.templateId}`);
+      return { ok: true, message: "Item desativado. As respostas anteriores foram preservadas." };
+    }
+    await prisma.checklistTemplateItem.delete({ where: { id: item.id } });
+    await writeAudit(item.template.companyId, session.id, "CHECKLIST_ITEM_DELETED", "ChecklistTemplateItem", item.id, `Item ${item.number} excluído de ${item.template.name}.`, { operation: "DELETE", parentId: item.templateId });
+    revalidatePath(`/cliente/checklists/${item.templateId}`);
+    return { ok: true, message: "Item sem histórico excluído." };
+  } catch (error) {
+    return { ok: false, message: mutationError(error) };
+  }
 }
 
 export async function createChecklistAction(formData: FormData) {
@@ -531,9 +656,10 @@ export async function createChecklistAction(formData: FormData) {
   const template = await prisma.checklistTemplate.findFirst({
     where: {
       id: text(formData, "templateId"),
+      isActive: true,
       ...(isSuperAdmin(session) ? {} : { OR: [{ companyId: machine.companyId }, { companyId: null }] }),
     },
-    include: { items: { orderBy: { number: "asc" } } },
+    include: { items: { where: { isActive: true }, orderBy: { number: "asc" } } },
   });
   if (!template) throw new Error("Modelo de checklist não encontrado.");
   if (!template.items.length) throw new Error("Este checklist ainda não tem itens cadastrados.");
@@ -562,10 +688,18 @@ export async function createActionPlanAction(formData: FormData) {
   if (!canMutateOperations(session)) throw new Error("Sem permissão.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
   if (!machine) throw new Error("Máquina não encontrada.");
+  const checklistExecutionId = optional(formData, "checklistExecutionId");
+  if (checklistExecutionId) {
+    const execution = await prisma.checklistExecution.findFirst({ where: { id: checklistExecutionId, machineId: machine.id, companyId: machine.companyId }, select: { id: true } });
+    if (!execution) throw new Error("O preenchimento de checklist selecionado não pertence a esta máquina.");
+  }
+  const files = getUploadedFiles(formData, "attachments");
+  files.forEach(assertAllowedActionPlanDocument);
   const plan = await prisma.actionPlan.create({
     data: {
       companyId: machine.companyId,
       machineId: machine.id,
+      checklistExecutionId,
       title: text(formData, "title") || `Plano de ação ${machine.code}`,
       items: {
         create: [
@@ -582,7 +716,22 @@ export async function createActionPlanAction(formData: FormData) {
       },
     },
   });
-  await writeAudit(machine.companyId, session.id, "ACTION_PLAN_CREATED", "ActionPlan", plan.id, `Plano de ação criado para ${machine.code}.`, { parentId: machine.id });
+  const storedFiles: string[] = [];
+  try {
+    for (const file of files) {
+      const format = assertAllowedActionPlanDocument(file);
+      const attachment = await prisma.actionPlanAttachment.create({ data: { actionPlanId: plan.id, name: file.name, format, size: formatFileSize(file.size), sizeBytes: file.size, uploadedBy: session.name } });
+      const saved = await saveActionPlanAttachmentUpload(file, machine.companyId, plan.id, attachment.id);
+      storedFiles.push(saved.relativePath);
+      const updated = await prisma.actionPlanAttachment.update({ where: { id: attachment.id }, data: { name: saved.fileName, format: saved.format, size: saved.size, fileUrl: saved.relativePath } });
+      await writeAudit(machine.companyId, session.id, "ACTION_PLAN_ATTACHMENT_ADDED", "ActionPlanAttachment", updated.id, `Documento ${updated.name} anexado ao plano ${plan.title}.`, { parentId: plan.id });
+    }
+  } catch (error) {
+    await Promise.all(storedFiles.map((file) => deleteStoredFile(file)));
+    await prisma.actionPlan.delete({ where: { id: plan.id } });
+    throw error;
+  }
+  await writeAudit(machine.companyId, session.id, "ACTION_PLAN_CREATED", "ActionPlan", plan.id, `Plano de ação criado para ${machine.code}${files.length ? ` com ${files.length} documento(s)` : ""}.`, { parentId: machine.id });
   revalidatePath(`/cliente/maquinas/${machine.id}`);
-  redirect(`/cliente/maquinas/${machine.id}`);
+  redirect(`/cliente/maquinas/${machine.id}#action-plan-${plan.id}`);
 }

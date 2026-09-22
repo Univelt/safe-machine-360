@@ -1,10 +1,11 @@
 "use client";
 
-import { AlertTriangle, ChevronDown, Plus, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
-import { addChecklistItemAction } from "@/app/actions/records";
+import { AlertTriangle, ChevronDown, MoreVertical, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { addChecklistItemAction, setChecklistItemActiveAction, updateChecklistItemAction, type ChecklistMutationState } from "@/app/actions/records";
 
-type ChecklistItem = { id: string; number: number; description: string };
+type ChecklistItem = { id: string; number: number; description: string; isActive: boolean; _count: { answers: number } };
 
 export function ChecklistTemplateItems({ templateId, items, canEdit }: { templateId: string; items: ChecklistItem[]; canEdit: boolean }) {
   const [query, setQuery] = useState("");
@@ -28,7 +29,7 @@ export function ChecklistTemplateItems({ templateId, items, canEdit }: { templat
 
       <div className="checklist-toolbar">
         <label className="machine-search"><Search size={17} /><span className="sr-only">Buscar item</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por número ou texto" />{query && <button type="button" aria-label="Limpar busca" onClick={() => setQuery("")}><X size={15} /></button>}</label>
-        <span><strong>{filtered.length}</strong> de {items.length} itens</span>
+          <span><strong>{filtered.filter((item) => item.isActive).length}</strong> ativos de {items.length} itens</span>
       </div>
 
       {duplicates.length > 0 && (
@@ -51,7 +52,8 @@ export function ChecklistTemplateItems({ templateId, items, canEdit }: { templat
                 {section.items.map((item) => (
                   <li key={item.id}>
                     <span className="checklist-num">{String(item.number).padStart(2, "0")}</span>
-                    <p>{item.description}</p>
+                    <div className="checklist-item-copy"><p>{item.description}</p>{!item.isActive && <span className="doc-pill neutral">Desativado</span>}</div>
+                    {canEdit && <ChecklistItemActions item={item} />}
                   </li>
                 ))}
               </ol>
@@ -61,6 +63,58 @@ export function ChecklistTemplateItems({ templateId, items, canEdit }: { templat
       )}
       <p className="checklist-structure-note">As seções organizam a leitura pela numeração atual. Os itens e seus identificadores permanecem inalterados no banco.</p>
     </>
+  );
+}
+
+const initialState: ChecklistMutationState = { ok: false, message: "" };
+
+function ChecklistItemActions({ item }: { item: ChecklistItem }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [editState, editAction, editPending] = useActionState(updateChecklistItemAction, initialState);
+  const [statusState, statusAction, statusPending] = useActionState(setChecklistItemActiveAction, initialState);
+
+  useEffect(() => {
+    if (editState.ok) {
+      router.refresh();
+    }
+  }, [editState.ok, router]);
+  useEffect(() => {
+    if (statusState.ok) router.refresh();
+  }, [statusState.ok, router]);
+
+  return (
+    <div className="checklist-item-actions">
+      {editing && (
+        <form action={editAction} className="inline-item-edit">
+          <input type="hidden" name="itemId" value={item.id} />
+          <label><span className="sr-only">Descrição do item {item.number}</span><textarea name="description" required rows={2} defaultValue={item.description} /></label>
+          <button className="button primary" type="submit" disabled={editPending}>{editPending ? "Salvando..." : "Salvar"}</button>
+          <button className="button secondary" type="button" onClick={() => setEditing(false)}>Cancelar</button>
+        </form>
+      )}
+      <button className="icon-button" type="button" aria-label={`Editar item ${item.number}`} onClick={() => setEditing((value) => !value)}><Pencil size={15} /></button>
+      <details className="actions-menu">
+        <summary className="icon-button" aria-label={`Mais ações do item ${item.number}`}><MoreVertical size={16} /></summary>
+        <div>
+          <form action={statusAction} onSubmit={(event) => {
+            if (!item.isActive) return;
+            const impact = item._count.answers > 0
+              ? `Este item possui ${item._count.answers} resposta(s). Ele será desativado e as execuções anteriores continuarão intactas.`
+              : "O item será excluído se não possuir histórico; caso contrário, será desativado.";
+            if (!window.confirm(`${impact}\n\nDeseja continuar?`)) event.preventDefault();
+          }}>
+            <input type="hidden" name="itemId" value={item.id} />
+            <input type="hidden" name="intent" value={item.isActive ? "remove" : "restore"} />
+            <button type="submit" disabled={statusPending} className={item.isActive ? "danger-action" : undefined}>
+              {item.isActive ? <Trash2 size={15} /> : <RotateCcw size={15} />}
+              {statusPending ? "Processando..." : item.isActive ? "Excluir ou desativar" : "Reativar item"}
+            </button>
+          </form>
+        </div>
+      </details>
+      {(editState.message || statusState.message) && <p className={`form-feedback ${(editState.ok || statusState.ok) ? "success" : "error"}`} role="status">{editState.message || statusState.message}</p>}
+    </div>
   );
 }
 

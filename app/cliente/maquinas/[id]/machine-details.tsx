@@ -8,10 +8,11 @@ import { RiskBadge } from "@/app/components/risk-badge";
 import { classifyHrn } from "@/lib/labels";
 import { MachineDeleteForm } from "./machine-delete-form";
 import { MachineSectionNavigation } from "./machine-section-navigation";
+import { MachineChecklistDashboard } from "./machine-checklist-dashboard";
+import { ActionPlanAttachments } from "./action-plan-attachments";
 
 export function MachineDetails({ machine, canMutate, canManage }: { machine: MachineView; canMutate: boolean; canManage: boolean }) {
   const latestApr = machine.riskAssessments[0];
-  const latestPlan = machine.actionPlans[0];
   const cover = machine.photos.find((photo) => photo.url);
 
   return (
@@ -58,6 +59,8 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
 
           <MachinePhotos machine={machine} canMutate={canMutate} />
 
+          <MachineChecklistDashboard machine={machine} />
+
           <section className="panel detail-section" id="documentos"><div className="panel-header"><div><span className="panel-kicker">Controle documental</span><h2>Documentos vinculados à máquina</h2></div>{canMutate && <Link className="text-button" href={`/cliente/documentos/novo?machineId=${machine.id}`}>Anexar <ChevronRight size={16} /></Link>}</div>
             <div className="machine-section-body">
               <div className="document-list">
@@ -90,7 +93,7 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
             <div className="machine-section-body">
               {machine.checklists.length === 0 && <p className="empty-copy">Nenhum checklist preenchido nesta máquina.</p>}
               {machine.checklists.map((execution) => (
-                <div className="checklist-execution" key={execution.id}>
+                <div className="checklist-execution" id={`checklist-execution-${execution.id}`} key={execution.id}>
                   <header>
                     <strong>{execution.template.name}</strong>
                     <small>{formatDateTime(execution.executedAt)} · {execution.executedBy}</small>
@@ -111,16 +114,15 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
           </section>
 
           <section className="panel detail-section" id="plano">
-            <div className="panel-header"><div><span className="panel-kicker">Plano de ação NR-12</span><h2>{latestPlan?.title ?? "Ações corretivas"}</h2></div>{canMutate && <Link className="text-button" href={`/cliente/maquinas/${machine.id}/plano`}>Novo plano <ChevronRight size={16} /></Link>}</div>
+            <div className="panel-header"><div><span className="panel-kicker">Plano de ação NR-12</span><h2>Ações corretivas</h2></div>{canMutate && <Link className="text-button" href={`/cliente/maquinas/${machine.id}/plano`}>Novo plano <ChevronRight size={16} /></Link>}</div>
             <div className="machine-section-body">
-              {latestPlan ? (
-                <div className="action-table">
-                  <header><span>N</span><span>Local</span><span>Não conformidade</span><span>Ação</span><span>Responsável</span></header>
-                  {latestPlan.items.map((item) => (
-                    <div key={item.id}><span>{item.sequence}</span><span>{item.location}</span><span>{item.nonconformity}</span><span>{item.action}</span><strong>{item.responsible}</strong></div>
-                  ))}
-                </div>
-              ) : <p className="empty-copy">Nenhum plano de ação cadastrado.</p>}
+              {machine.actionPlans.length ? machine.actionPlans.map((plan) => (
+                <article className="action-plan-card" id={`action-plan-${plan.id}`} key={plan.id}>
+                  <header><div><strong>{plan.title}</strong><small>{plan.checklistExecution ? `Vinculado a ${plan.checklistExecution.template.name} · ${formatDate(plan.checklistExecution.executedAt)}` : "Plano geral da máquina"}</small></div><span>{formatDate(plan.createdAt)}</span></header>
+                  <div className="action-table"><header><span>N</span><span>Local</span><span>Não conformidade</span><span>Ação</span><span>Responsável</span></header>{plan.items.map((item) => <div key={item.id}><span>{item.sequence}</span><span>{item.location}</span><span>{item.nonconformity}</span><span>{item.action}</span><strong>{item.responsible}</strong></div>)}</div>
+                  <ActionPlanAttachments planId={plan.id} attachments={plan.attachments} canMutate={canMutate} />
+                </article>
+              )) : <p className="empty-copy">Nenhum plano de ação cadastrado.</p>}
             </div>
           </section>
 
@@ -137,7 +139,7 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
         </div>
 
         <aside className="detail-side-column">
-          <section className="panel risk-summary"><div className="panel-header"><div><span className="panel-kicker">Avaliação de risco</span><h2>Classificação atual</h2></div></div><div className="risk-number"><ShieldAlert size={26} /><strong>{machine.hrn}</strong><span>HRN atual</span></div><dl><div><dt>Nível</dt><dd><RiskBadge level={machine.riskLevel} /></dd></div><div><dt>HRN residual</dt><dd className="hrn-detail-value">{machine.hrnResidual ?? "—"}{machine.hrnResidual && <RiskBadge level={classifyHrn(machine.hrnResidual)} />}</dd></div><div><dt>Categoria</dt><dd>{machine.category ? categoryLabels[machine.category] : "—"}</dd></div><div><dt>Situação NR-12</dt><dd>{machine.status === "Interditada" ? "Adequação necessária" : "Monitorada"}</dd></div></dl></section>
+          <section className="panel risk-summary"><div className="panel-header"><div><span className="panel-kicker">Avaliação de risco</span><h2>Classificação atual</h2></div></div>{machine.riskOrigin === "MANUAL" ? <div className="risk-number manual"><ShieldAlert size={26} /><RiskBadge level={machine.riskLevel} /><span>Risco definido manualmente</span></div> : <div className="risk-number"><ShieldAlert size={26} /><strong>{machine.hrn}</strong><span>HRN atual</span></div>}<dl><div><dt>Nível</dt><dd><RiskBadge level={machine.riskLevel} /></dd></div><div><dt>Origem</dt><dd>{machine.riskOrigin === "MANUAL" ? "Definida manualmente" : "Calculada pelo HRN"}</dd></div><div><dt>HRN residual</dt><dd className="hrn-detail-value">{machine.hrnResidual ?? "—"}{machine.riskOrigin === "AUTOMATIC" && machine.hrnResidual && <RiskBadge level={classifyHrn(machine.hrnResidual)} />}</dd></div><div><dt>Categoria</dt><dd>{machine.category ? categoryLabels[machine.category] : "—"}</dd></div><div><dt>Situação NR-12</dt><dd>{machine.status === "Interditada" ? "Adequação necessária" : "Monitorada"}</dd></div></dl></section>
           <section className="panel quick-facts" id="dados-tecnicos"><div className="panel-header"><div><span className="panel-kicker">Dados técnicos</span><h2>Características operacionais</h2></div></div><dl>
             <div><dt>Fontes de energia</dt><dd>{machine.energy}</dd></div>
             <div><dt>Sistemas</dt><dd>{machine.mainSystems ?? "—"}</dd></div>

@@ -40,6 +40,11 @@ enum RiskLevel {
   MUITO_ALTO
 }
 
+enum RiskOrigin {
+  AUTOMATIC
+  MANUAL
+}
+
 enum SafetyCategory {
   B
   CAT_1
@@ -184,6 +189,8 @@ model Machine {
   hrnCurrent             String
   hrnResidual            String?
   riskLevel              RiskLevel
+  riskOrigin             RiskOrigin     @default(AUTOMATIC)
+  manualRiskLevel        RiskLevel?
   energySources          String
   mainSystems            String?
   usage                  String?
@@ -288,6 +295,8 @@ model ChecklistTemplate {
   companyId   String?
   name        String
   description String?
+  isActive    Boolean  @default(true)
+  archivedAt  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -303,6 +312,8 @@ model ChecklistTemplateItem {
   templateId String
   number     Int
   description String
+  isActive    Boolean   @default(true)
+  archivedAt  DateTime?
 
   template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   answers  ChecklistItemAnswer[]
@@ -323,6 +334,7 @@ model ChecklistExecution {
   machine  Machine           @relation(fields: [machineId], references: [id], onDelete: Cascade)
   template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
   answers  ChecklistItemAnswer[]
+  actionPlans ActionPlan[]
 
   @@index([companyId])
   @@index([machineId])
@@ -382,16 +394,20 @@ model ActionPlan {
   id        String   @id @default(cuid())
   companyId String
   machineId String
+  checklistExecutionId String?
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   company Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   machine Machine          @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  checklistExecution ChecklistExecution? @relation(fields: [checklistExecutionId], references: [id], onDelete: SetNull)
   items   ActionPlanItem[]
+  attachments ActionPlanAttachment[]
 
   @@index([companyId])
   @@index([machineId])
+  @@index([checklistExecutionId])
 }
 
 model ActionPlanItem {
@@ -406,6 +422,22 @@ model ActionPlanItem {
   status         ActionItemStatus @default(ABERTA)
 
   actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+}
+
+model ActionPlanAttachment {
+  id           String   @id @default(cuid())
+  actionPlanId String
+  name         String
+  format       String
+  size         String
+  sizeBytes    Int
+  fileUrl      String?
+  uploadedBy   String
+  createdAt    DateTime @default(now())
+
+  actionPlan ActionPlan @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+
+  @@index([actionPlanId])
 }
 
 enum AuditOperation {

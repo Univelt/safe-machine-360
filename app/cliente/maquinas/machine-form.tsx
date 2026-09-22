@@ -46,7 +46,7 @@ export function MachineForm({
       <label>Documento<input name="documentNumber" defaultValue={machine?.documentNumber ?? ""} placeholder="APR-001" /></label>
       <label>Revisão<input name="documentRevision" defaultValue={machine?.documentRevision ?? ""} placeholder="1.0" /></label>
       <label>Categoria<select name="category" defaultValue={machine?.category ?? "B"}><option value="B">B</option><option value="CAT_1">1</option><option value="CAT_2">2</option><option value="CAT_3">3</option><option value="CAT_4">4</option></select></label>
-      <HrnFields current={machine?.hrn ?? 80} residual={machine?.hrnResidual} />
+      <HrnFields current={machine?.hrn ?? ""} residual={machine?.hrnResidual} riskOrigin={machine?.riskOrigin} manualRiskLevel={machine?.manualRiskLevel} />
       <label>Status<select name="status" defaultValue={machine?.status === "Em manutenção" ? "EM_MANUTENCAO" : machine?.status === "Interditada" ? "INTERDITADA" : "OPERACIONAL"}><option value="OPERACIONAL">Operacional</option><option value="EM_MANUTENCAO">Em manutenção</option><option value="INTERDITADA">Interditada</option></select></label>
       <label className="full">Fontes de energia<input name="energySources" defaultValue={machine?.energy ?? "Elétrica"} placeholder="Elétrica, mecânica e pneumática" /></label>
       <label className="full">Principais sistemas e dispositivos<textarea name="mainSystems" rows={3} defaultValue={machine?.mainSystems ?? ""} /></label>

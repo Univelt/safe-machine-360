@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Checklists | Portal Univelt" };
 
 export default async function ChecklistsPage() {
   const session = await requireClient();
-  const templates = await listChecklistTemplates(session);
+  const templates = await listChecklistTemplates(session, { includeInactive: true });
   const canCreate = canMutateOperations(session);
   return (
     <AuthenticatedShell variant="client">
@@ -22,7 +22,7 @@ export default async function ChecklistsPage() {
             <h1>Checklists cadastrados</h1>
             <p>Inclua modelos e itens no banco. Depois eles aparecem para preenchimento na ficha da máquina.</p>
           </div>
-          {canCreate && <Link className="button primary" href="/cliente/checklists/novo"><Plus size={16} /> Novo checklist</Link>}
+          <div className="page-heading-actions"><Link className="button secondary" href="/cliente/checklists/dashboard">Ver dashboard</Link>{canCreate && <Link className="button primary" href="/cliente/checklists/novo"><Plus size={16} /> Novo checklist</Link>}</div>
         </section>
         <section className="panel checklist-catalog">
           {templates.length === 0 && (
@@ -36,7 +36,7 @@ export default async function ChecklistsPage() {
             <article className="checklist-catalog-row" key={template.id}>
               <span className="checklist-catalog-icon"><ClipboardCheck size={20} /></span>
               <div>
-                <strong>{template.name}</strong>
+                <strong>{template.name} {!template.isActive && <span className="doc-pill neutral">Desativado</span>}</strong>
                 <p>{template.description || "Sem descrição."}</p>
                 <small>{template.company?.name ?? "Catálogo global Univelt"}</small>
               </div>

@@ -16,6 +16,10 @@ export const riskTones: Record<RiskLevel, string> = {
   MUITO_ALTO: "risk-critical",
 };
 
+export const riskLevelOptions = [...new Map(
+  Object.entries(riskLabels).map(([value, label]) => [label, { value: value as RiskLevel, label }]),
+).values()];
+
 const riskRank: Record<RiskLevel, number> = {
   MUITO_BAIXO: 0,
   BAIXO: 0,
@@ -107,9 +111,19 @@ export const auditActionLabels: Record<string, string> = {
   APR_CREATED: "Apreciação de risco cadastrada",
   CHECKLIST_TEMPLATE_CREATED: "Modelo de checklist cadastrado",
   CHECKLIST_ITEM_ADDED: "Item de checklist adicionado",
+  CHECKLIST_TEMPLATE_UPDATED: "Modelo de checklist atualizado",
+  CHECKLIST_TEMPLATE_ARCHIVED: "Modelo de checklist desativado",
+  CHECKLIST_TEMPLATE_RESTORED: "Modelo de checklist reativado",
+  CHECKLIST_TEMPLATE_DELETED: "Modelo de checklist excluído",
+  CHECKLIST_ITEM_UPDATED: "Item de checklist atualizado",
+  CHECKLIST_ITEM_ARCHIVED: "Item de checklist desativado",
+  CHECKLIST_ITEM_RESTORED: "Item de checklist reativado",
+  CHECKLIST_ITEM_DELETED: "Item de checklist excluído",
   CHECKLIST_CREATED: "Checklist preenchido",
   MACHINE_IMPORT: "Máquinas importadas",
   ACTION_PLAN_CREATED: "Plano de ação cadastrado",
+  ACTION_PLAN_ATTACHMENT_ADDED: "Documento do plano anexado",
+  ACTION_PLAN_ATTACHMENT_DELETED: "Documento do plano removido",
 };
 
 export const auditEntityLabels: Record<string, string> = {
@@ -125,6 +139,7 @@ export const auditEntityLabels: Record<string, string> = {
   ChecklistTemplateItem: "Item de checklist",
   ChecklistExecution: "Checklist preenchido",
   ActionPlan: "Plano de ação",
+  ActionPlanAttachment: "Documento do plano",
 };
 
 export function humanizeAuditCode(value: string) {

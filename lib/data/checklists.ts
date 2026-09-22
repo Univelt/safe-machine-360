@@ -12,12 +12,12 @@ export function checklistCatalogFilter(session: SessionUser) {
   };
 }
 
-export async function listChecklistTemplates(session: SessionUser) {
+export async function listChecklistTemplates(session: SessionUser, options: { includeInactive?: boolean } = {}) {
   return prisma.checklistTemplate.findMany({
-    where: checklistCatalogFilter(session),
+    where: { ...checklistCatalogFilter(session), ...(options.includeInactive ? {} : { isActive: true }) },
     include: {
       company: { select: { name: true } },
-      items: { orderBy: { number: "asc" } },
+      items: { where: options.includeInactive ? {} : { isActive: true }, orderBy: { number: "asc" } },
       _count: { select: { executions: true, items: true } },
     },
     orderBy: { name: "asc" },
@@ -29,7 +29,7 @@ export async function getChecklistTemplate(session: SessionUser, id: string) {
     where: { id, ...checklistCatalogFilter(session) },
     include: {
       company: { select: { name: true } },
-      items: { orderBy: { number: "asc" } },
+      items: { include: { _count: { select: { answers: true } } }, orderBy: { number: "asc" } },
       _count: { select: { executions: true, items: true } },
     },
   });
