@@ -6,8 +6,11 @@ import { classifyHrn } from "@/lib/labels";
 import { riskLevelOptions } from "@/lib/labels";
 import { RiskBadge } from "./risk-badge";
 
-function digitsOnly(value: string) {
-  return value.replace(/\D/g, "");
+function decimalOnly(value: string) {
+  const normalized = value.replace(/\./g, ",").replace(/[^\d,]/g, "");
+  const [integer = "", ...decimals] = normalized.split(",");
+  if (!decimals.length) return integer;
+  return `${integer || "0"},${decimals.join("")}`;
 }
 
 function HrnField({ name, label, defaultValue, required, disabled = false }: { name: string; label: string; defaultValue?: string | number | null; required?: boolean; disabled?: boolean }) {
@@ -23,10 +26,11 @@ function HrnField({ name, label, defaultValue, required, disabled = false }: { n
           className="hrn-input"
           name={name}
           type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
+          inputMode="decimal"
+          pattern="[0-9]+([,.][0-9]+)?"
+          placeholder="Ex.: 12,5"
           value={value}
-          onChange={(event) => setValue(digitsOnly(event.target.value))}
+          onChange={(event) => setValue(decimalOnly(event.target.value))}
           required={required}
           disabled={disabled}
           aria-describedby={level ? `${name}-risk` : undefined}
@@ -54,27 +58,29 @@ export function HrnFields({
   const [selectedRisk, setSelectedRisk] = useState<RiskLevel | "">(manualRiskLevel ?? "");
   return (
     <div className="hrn-risk-fields full">
-      <label className="risk-mode-toggle">
-        <input type="checkbox" checked={manual} onChange={(event) => setManual(event.target.checked)} />
-        <span><strong>Definir nível de risco manualmente</strong><small>Use apenas quando o HRN não representar a classificação aplicável.</small></span>
-      </label>
       <input type="hidden" name="riskOrigin" value={manual ? "MANUAL" : "AUTOMATIC"} />
-      <div className={`hrn-fields ${manual ? "is-disabled" : ""}`} aria-disabled={manual}>
+      <div className={`hrn-fields ${manual ? "is-disabled" : ""}`}>
         <HrnField name="hrnCurrent" label="HRN atual" defaultValue={current} required={!manual} disabled={manual} />
         <HrnField name="hrnResidual" label="HRN residual" defaultValue={residual} required={!manual && residualRequired} disabled={manual} />
+        <div className="risk-classification-field">
+          <span className="field-label">Classificação de risco</span>
+          <label className="risk-mode-toggle">
+            <input type="checkbox" checked={manual} onChange={(event) => setManual(event.target.checked)} />
+            <span><strong>Definir manualmente</strong><small>Use apenas quando o HRN não representar o risco.</small></span>
+          </label>
+          {manual ? (
+            <label className="manual-risk-field">
+              <span className="sr-only">Nível de risco manual</span>
+              <select name="manualRiskLevel" required value={selectedRisk} onChange={(event) => setSelectedRisk(event.target.value as RiskLevel)}>
+                <option value="">Selecione a classificação</option>
+                {riskLevelOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          ) : (
+            <input type="hidden" name="manualRiskLevel" value={selectedRisk} />
+          )}
+        </div>
       </div>
-      {manual ? (
-        <label className="manual-risk-field">
-          Nível de risco manual
-          <select name="manualRiskLevel" required value={selectedRisk} onChange={(event) => setSelectedRisk(event.target.value as RiskLevel)}>
-            <option value="">Selecione a classificação</option>
-            {riskLevelOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-          <small>O HRN fica preservado, mas não participa da classificação enquanto o modo manual estiver ativo.</small>
-        </label>
-      ) : (
-        <input type="hidden" name="manualRiskLevel" value={selectedRisk} />
-      )}
     </div>
   );
 }

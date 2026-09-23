@@ -148,14 +148,17 @@ export function parseHrn(value: string) {
   const match = text.match(/-?\d+(?:\.\d+)?/);
   if (!match) return 0;
   const parsed = Number(match[0]);
-  return Number.isFinite(parsed) ? Math.round(parsed) : 0;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 export function parseRiskLevel(value: string): RiskLevel {
   const h = normalizeHeader(value);
   if (!h) return "SIGNIFICATIVO";
-  if (h.includes("extremo") || h.includes("muito alto") || h.includes("critico")) return "MUITO_ALTO";
-  if (h.includes("muito baixo") || h.includes("insignific") || h.includes("desprez")) return "MUITO_BAIXO";
+  if (h.includes("inaceit")) return "INACEITAVEL";
+  if (h.includes("extremo") || h.includes("critico")) return "EXTREMO";
+  if (h.includes("muito alto")) return "MUITO_ALTO";
+  if (h.includes("desprez")) return "DESPREZIVEL";
+  if (h.includes("muito baixo") || h.includes("insignific")) return "MUITO_BAIXO";
   if (h.includes("alto")) return "ALTO";
   if (h.includes("baixo")) return "BAIXO";
   if (h.includes("signific") || h.includes("medio") || h.includes("moderado")) return "SIGNIFICATIVO";

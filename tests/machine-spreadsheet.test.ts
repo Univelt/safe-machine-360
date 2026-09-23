@@ -16,17 +16,25 @@ import { parseMachineSpreadsheet } from "../lib/import/machine-spreadsheet";
 import { parseCsvToGrid, parseMachineCsv } from "../lib/import/machine-csv";
 import { classifyHrn, classifyHrnPair } from "../lib/labels";
 
-test("classifies HRN values using the four live risk bands", () => {
+test("classifies integer and decimal HRN values using the current risk table", () => {
   assert.equal(classifyHrn(""), null);
   assert.equal(classifyHrn("abc"), null);
-  assert.equal(classifyHrn("0"), "BAIXO");
-  assert.equal(classifyHrn("5"), "BAIXO");
-  assert.equal(classifyHrn("6"), "SIGNIFICATIVO");
+  assert.equal(classifyHrn("0"), "DESPREZIVEL");
+  assert.equal(classifyHrn("1"), "DESPREZIVEL");
+  assert.equal(classifyHrn("1,1"), "MUITO_BAIXO");
+  assert.equal(classifyHrn("5"), "MUITO_BAIXO");
+  assert.equal(classifyHrn("5.5"), "BAIXO");
+  assert.equal(classifyHrn("10"), "BAIXO");
+  assert.equal(classifyHrn("10,01"), "SIGNIFICATIVO");
   assert.equal(classifyHrn("50"), "SIGNIFICATIVO");
   assert.equal(classifyHrn("51"), "ALTO");
-  assert.equal(classifyHrn("500"), "ALTO");
-  assert.equal(classifyHrn("501"), "MUITO_ALTO");
-  assert.equal(classifyHrnPair("4", "600"), "MUITO_ALTO");
+  assert.equal(classifyHrn("100"), "ALTO");
+  assert.equal(classifyHrn("100.5"), "MUITO_ALTO");
+  assert.equal(classifyHrn("500"), "MUITO_ALTO");
+  assert.equal(classifyHrn("501"), "EXTREMO");
+  assert.equal(classifyHrn("1000"), "EXTREMO");
+  assert.equal(classifyHrn("1000,01"), "INACEITAVEL");
+  assert.equal(classifyHrnPair("4", "600"), "EXTREMO");
 });
 
 test("classifies NR-12 spreadsheet headers onto Machine fields", () => {
@@ -47,7 +55,10 @@ test("classifies NR-12 spreadsheet headers onto Machine fields", () => {
 });
 
 test("maps risk labels, year fragments and MQ tags", () => {
-  assert.equal(parseRiskLevel("RISCO EXTREMO"), "MUITO_ALTO");
+  assert.equal(parseRiskLevel("RISCO INACEITÁVEL"), "INACEITAVEL");
+  assert.equal(parseRiskLevel("RISCO EXTREMO"), "EXTREMO");
+  assert.equal(parseRiskLevel("RISCO MUITO ALTO"), "MUITO_ALTO");
+  assert.equal(parseRiskLevel("RISCO DESPREZÍVEL"), "DESPREZIVEL");
   assert.equal(parseRiskLevel("RISCO ALTO"), "ALTO");
   assert.equal(parseRiskLevel("RISCO SIGNIFICANTE"), "SIGNIFICATIVO");
   assert.equal(parseRiskLevel("RISCO BAIXO"), "BAIXO");

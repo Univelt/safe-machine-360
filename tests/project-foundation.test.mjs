@@ -79,7 +79,7 @@ test("provides NR-12 machine cadastro, APR, checklist and action plan", async ()
   assert.match(machineForm, /name="year" type="text"/);
   assert.match(hrnFields, /name={name}/);
   assert.match(hrnFields, /type="text"/);
-  assert.match(hrnFields, /inputMode="numeric"/);
+  assert.match(hrnFields, /inputMode="decimal"/);
   assert.match(machineForm, /Função dos operadores/);
   assert.match(machineForm, /Identificação de riscos - Mecânico/);
   assert.match(machineForm, /Identificação de riscos - Elétrico/);

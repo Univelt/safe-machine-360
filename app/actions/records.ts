@@ -9,7 +9,7 @@ import { canManageChecklistTemplate } from "@/lib/checklist-permissions";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
 import { assertAllowedActionPlanDocument, assertAllowedImage, assertAllowedUpload, deleteStoredFile, evidenceKindForFile, formatFileSize, getUploadedFile, getUploadedFiles, saveActionPlanAttachmentUpload, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload } from "@/lib/storage";
-import { classifyHrnPair } from "@/lib/labels";
+import { classifyHrnPair, normalizeHrnValue, parseHrnValue } from "@/lib/labels";
 import { resolveMachineRisk } from "@/lib/machine-risk";
 
 function text(form: FormData, key: string) {
@@ -132,9 +132,13 @@ export async function createMachineAction(formData: FormData) {
 
 function machineFields(formData: FormData) {
   const name = text(formData, "name");
-  const hrnCurrent = text(formData, "hrnCurrent");
-  const hrnResidual = optional(formData, "hrnResidual");
   const riskOrigin = text(formData, "riskOrigin") === "MANUAL" ? "MANUAL" as const : "AUTOMATIC" as const;
+  const rawHrnCurrent = text(formData, "hrnCurrent");
+  const rawHrnResidual = optional(formData, "hrnResidual");
+  const hrnCurrent = riskOrigin === "MANUAL" ? rawHrnCurrent : (normalizeHrnValue(rawHrnCurrent) ?? "");
+  const hrnResidual = riskOrigin === "MANUAL" || rawHrnResidual === null ? rawHrnResidual : normalizeHrnValue(rawHrnResidual);
+  if (riskOrigin === "AUTOMATIC" && !hrnCurrent) throw new Error("Informe um HRN atual válido.");
+  if (riskOrigin === "AUTOMATIC" && rawHrnResidual !== null && hrnResidual === null) throw new Error("Informe um HRN residual válido.");
   const resolvedRisk = resolveMachineRisk({ origin: riskOrigin, manualRiskLevel: optional(formData, "manualRiskLevel") as RiskLevel | null, hrnCurrent, hrnResidual });
   return {
     code: text(formData, "code"),
@@ -282,6 +286,30 @@ export async function deleteMachinePhotoAction(formData: FormData) {
   if (photo.url) await deleteStoredFile(photo.url);
   await prisma.machinePhoto.delete({ where: { id: photo.id } });
   await writeAudit(photo.machine.companyId, session.id, "MACHINE_PHOTO_DELETED", "MachinePhoto", photo.id, `Foto "${photo.caption}" removida de ${photo.machine.code}.`, { parentId: machineId });
+  revalidatePath(`/cliente/maquinas/${machineId}`);
+  revalidatePath("/cliente/maquinas");
+}
+
+export async function updateMachinePhotoAction(formData: FormData) {
+  const session = await requireSession();
+  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  const machineId = text(formData, "machineId");
+  const photo = await prisma.machinePhoto.findFirst({
+    where: {
+      id: text(formData, "photoId"),
+      machineId,
+      machine: isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" },
+    },
+    include: { machine: { select: { companyId: true, code: true } } },
+  });
+  if (!photo) throw new Error("Foto não encontrada.");
+  const caption = text(formData, "caption");
+  if (!caption) throw new Error("Informe o nome da foto.");
+  await prisma.machinePhoto.update({
+    where: { id: photo.id },
+    data: { caption, takenAt: dateValue(formData, "takenAt"), compliant: checked(formData, "compliant") },
+  });
+  await writeAudit(photo.machine.companyId, session.id, "MACHINE_PHOTO_UPDATED", "MachinePhoto", photo.id, `Foto "${caption}" atualizada em ${photo.machine.code}.`, { operation: "UPDATE", parentId: machineId });
   revalidatePath(`/cliente/maquinas/${machineId}`);
   revalidatePath("/cliente/maquinas");
 }
@@ -441,6 +469,9 @@ export async function createRiskAssessmentAction(formData: FormData) {
   if (!machine) throw new Error("Máquina não encontrada.");
   const hrnCurrent = text(formData, "hrnCurrent");
   const hrnResidual = optional(formData, "hrnResidual");
+  const parsedCurrent = parseHrnValue(hrnCurrent);
+  const parsedResidual = parseHrnValue(hrnResidual);
+  if (parsedCurrent === null || parsedResidual === null) throw new Error("Informe valores HRN válidos, usando apenas números inteiros ou decimais.");
   const assessment = await prisma.riskAssessment.create({
     data: {
       companyId: machine.companyId,
@@ -448,8 +479,8 @@ export async function createRiskAssessmentAction(formData: FormData) {
       documentNumber: text(formData, "documentNumber"),
       revision: text(formData, "revision") || "1.0",
       category: (text(formData, "category") || "CAT_1") as SafetyCategory,
-      hrnCurrent: numberValue(formData, "hrnCurrent"),
-      hrnResidual: numberValue(formData, "hrnResidual"),
+      hrnCurrent: parsedCurrent,
+      hrnResidual: parsedResidual,
       riskLevel: classifyHrnPair(hrnCurrent, hrnResidual) ?? "BAIXO",
       issuedAt: new Date(text(formData, "issuedAt") || Date.now()),
       expiresAt: optional(formData, "expiresAt") ? new Date(text(formData, "expiresAt")) : null,

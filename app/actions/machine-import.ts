@@ -96,10 +96,10 @@ function sanitizeDraft(value: unknown): MachineImportDraft | null {
   const name = String(row.name ?? "").trim();
   if (!code || !name) return null;
   const parsedRiskLevel = String(row.riskLevel ?? "SIGNIFICATIVO") as RiskLevel;
-  const allowedRisk: RiskLevel[] = ["MUITO_BAIXO", "BAIXO", "SIGNIFICATIVO", "ALTO", "MUITO_ALTO"];
+  const allowedRisk: RiskLevel[] = ["DESPREZIVEL", "MUITO_BAIXO", "BAIXO", "SIGNIFICATIVO", "ALTO", "MUITO_ALTO", "EXTREMO", "INACEITAVEL"];
   const year = Number(row.year);
   const hrnCurrent = Number(row.hrnCurrent);
-  const hrnText = Number.isFinite(hrnCurrent) ? String(Math.round(hrnCurrent)) : "";
+  const hrnText = Number.isFinite(hrnCurrent) && hrnCurrent >= 0 ? String(hrnCurrent) : "";
   return {
     rowNumber: Number(row.rowNumber) || 0,
     code,
@@ -115,7 +115,7 @@ function sanitizeDraft(value: unknown): MachineImportDraft | null {
     area: String(row.area ?? "Geral").trim() || "Geral",
     capacity: String(row.capacity ?? "").trim() || null,
     riskLevel: classifyHrn(hrnText) ?? (allowedRisk.includes(parsedRiskLevel) ? parsedRiskLevel : "SIGNIFICATIVO"),
-    hrnCurrent: Number.isFinite(hrnCurrent) ? Math.round(hrnCurrent) : 0,
+    hrnCurrent: Number.isFinite(hrnCurrent) && hrnCurrent >= 0 ? hrnCurrent : 0,
     description: String(row.description ?? name).trim() || name,
     observations: String(row.observations ?? "").trim() || null,
     warnings: Array.isArray(row.warnings) ? row.warnings.map((warning) => String(warning)).filter(Boolean) : [],

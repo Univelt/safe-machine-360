@@ -100,7 +100,7 @@ export async function companyMetrics(session: SessionUser) {
     prisma.complianceSnapshot.findMany({ where: companyFilter(session), orderBy: { createdAt: "asc" } }),
   ]);
 
-  const highRisk = machines.filter((machine) => machine.riskLevel === "ALTO" || machine.riskLevel === "MUITO_ALTO").length;
+  const highRisk = machines.filter((machine) => ["ALTO", "MUITO_ALTO", "EXTREMO", "INACEITAVEL"].includes(machine.riskLevel)).length;
   const statuses = documents.map((document) => computeDocumentStatus(document.expirationDate));
   const valid = statuses.filter((status) => status === "VALIDO").length;
   const expiring = statuses.filter((status) => status === "A_VENCER").length;
@@ -114,15 +114,19 @@ export async function companyMetrics(session: SessionUser) {
   const compliance = documents.length ? Math.round((valid / documents.length) * 100) : 0;
 
   const riskDistribution = [
-    { label: "Baixo", value: machines.filter((item) => item.riskLevel === "MUITO_BAIXO" || item.riskLevel === "BAIXO").length, tone: "risk-low" },
-    { label: "Médio", value: machines.filter((item) => item.riskLevel === "SIGNIFICATIVO").length, tone: "risk-medium" },
+    { label: "Desprezível", value: machines.filter((item) => item.riskLevel === "DESPREZIVEL").length, tone: "risk-negligible" },
+    { label: "Muito baixo", value: machines.filter((item) => item.riskLevel === "MUITO_BAIXO").length, tone: "risk-very-low" },
+    { label: "Baixo", value: machines.filter((item) => item.riskLevel === "BAIXO").length, tone: "risk-low" },
+    { label: "Significante", value: machines.filter((item) => item.riskLevel === "SIGNIFICATIVO").length, tone: "risk-significant" },
     { label: "Alto", value: machines.filter((item) => item.riskLevel === "ALTO").length, tone: "risk-high" },
-    { label: "Muito alto", value: machines.filter((item) => item.riskLevel === "MUITO_ALTO").length, tone: "risk-critical" },
+    { label: "Muito alto", value: machines.filter((item) => item.riskLevel === "MUITO_ALTO").length, tone: "risk-very-high" },
+    { label: "Extremo", value: machines.filter((item) => item.riskLevel === "EXTREMO").length, tone: "risk-extreme" },
+    { label: "Inaceitável", value: machines.filter((item) => item.riskLevel === "INACEITAVEL").length, tone: "risk-unacceptable" },
   ].map((item) => ({ ...item, percent: machines.length ? Math.round((item.value / machines.length) * 100) : 0 }));
 
   const sectors = [...new Set(machines.map((machine) => machine.sector))].map((name) => {
     const group = machines.filter((machine) => machine.sector === name);
-    const attention = group.filter((machine) => machine.riskLevel === "ALTO" || machine.riskLevel === "MUITO_ALTO" || machine.status === "INTERDITADA").length;
+    const attention = group.filter((machine) => ["ALTO", "MUITO_ALTO", "EXTREMO", "INACEITAVEL"].includes(machine.riskLevel) || machine.status === "INTERDITADA").length;
     const score = Math.max(40, 100 - attention * 8);
     return { name, machines: group.length, attention, score };
   });
@@ -157,7 +161,7 @@ export async function globalMetrics(session?: SessionUser) {
     prisma.activity.findMany({ where: scopedCompany }),
     prisma.user.findMany({ where: session?.companyId ? { companyId: session.companyId } : {} }),
   ]);
-  const highRisk = machines.filter((machine) => machine.riskLevel === "ALTO" || machine.riskLevel === "MUITO_ALTO").length;
+  const highRisk = machines.filter((machine) => ["ALTO", "MUITO_ALTO", "EXTREMO", "INACEITAVEL"].includes(machine.riskLevel)).length;
   const expired = documents.filter((document) => computeDocumentStatus(document.expirationDate) === "VENCIDO").length;
   const expiring = documents.filter((document) => computeDocumentStatus(document.expirationDate) === "A_VENCER").length;
   const valid = documents.filter((document) => computeDocumentStatus(document.expirationDate) === "VALIDO").length;

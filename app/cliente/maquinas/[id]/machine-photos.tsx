@@ -1,10 +1,10 @@
 "use client";
 
-import { Check, LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import { Check, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { deleteMachinePhotoAction, uploadMachinePhotoAction } from "@/app/actions/records";
+import { deleteMachinePhotoAction, updateMachinePhotoAction, uploadMachinePhotoAction } from "@/app/actions/records";
 import { ChangeLog } from "../../../components/change-log";
 import type { MachineView } from "@/lib/data/types";
 import { formatDate } from "@/lib/labels";
@@ -12,6 +12,11 @@ import { formatDate } from "@/lib/labels";
 function todayInputValue() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function dateInputValue(value: string) {
+  const match = /^\d{4}-\d{2}-\d{2}/.exec(value);
+  return match?.[0] ?? todayInputValue();
 }
 
 export function MachinePhotos({ machine, canMutate }: { machine: MachineView; canMutate: boolean }) {
@@ -37,13 +42,16 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
               </span>
             </div>
             {canMutate && (
-              <form action={deleteMachinePhotoAction} onSubmit={(event) => {
-                if (!window.confirm(`Remover esta foto de ${machine.name}? Esta ação não pode ser desfeita.`)) event.preventDefault();
-              }}>
-                <input type="hidden" name="machineId" value={machine.id} />
-                <input type="hidden" name="photoId" value={photo.id} />
-                <RemovePhotoButton machineName={machine.name} />
-              </form>
+              <div className="photo-card-actions">
+                <EditPhotoModal machineId={machine.id} photo={photo} />
+                <form action={deleteMachinePhotoAction} onSubmit={(event) => {
+                  if (!window.confirm(`Remover esta foto de ${machine.name}? Esta ação não pode ser desfeita.`)) event.preventDefault();
+                }}>
+                  <input type="hidden" name="machineId" value={machine.id} />
+                  <input type="hidden" name="photoId" value={photo.id} />
+                  <RemovePhotoButton machineName={machine.name} />
+                </form>
+              </div>
             )}
           </article>
         ))}
@@ -51,6 +59,43 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
       </div>
       <ChangeLog at={machine.lastPhotoChange?.at} by={machine.lastPhotoChange?.by} />
     </section>
+  );
+}
+
+function EditPhotoModal({ machineId, photo }: { machineId: string; photo: MachineView["photos"][number] }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = `edit-photo-${photo.id}`;
+  const close = () => dialogRef.current?.close();
+
+  return (
+    <>
+      <button className="photo-edit" type="button" onClick={() => dialogRef.current?.showModal()} aria-label={`Editar ${photo.caption}`}>
+        <Pencil size={16} />
+        <span>Editar</span>
+      </button>
+      <dialog ref={dialogRef} className="photo-modal" aria-labelledby={titleId} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+        <div className="photo-modal-card">
+          <header className="photo-modal-head">
+            <div><span className="panel-kicker">Registro visual</span><h3 id={titleId}>Editar foto</h3></div>
+            <button className="icon-button" type="button" onClick={close} aria-label="Fechar"><X size={18} /></button>
+          </header>
+          <form className="photo-modal-form" action={updateMachinePhotoAction}>
+            <input type="hidden" name="machineId" value={machineId} />
+            <input type="hidden" name="photoId" value={photo.id} />
+            <label>Nome da foto<input name="caption" type="text" required defaultValue={photo.caption} autoFocus /></label>
+            <label>Data<input name="takenAt" type="date" required defaultValue={dateInputValue(photo.takenAt)} /></label>
+            <fieldset className="photo-compliance-choice">
+              <legend>Conformidade</legend>
+              <label><input name="compliant" type="checkbox" value="true" defaultChecked={photo.compliant} /><span><strong>Atende à norma</strong><small>Desmarque quando a condição registrada não estiver conforme.</small></span></label>
+            </fieldset>
+            <div className="photo-modal-actions">
+              <button className="button secondary" type="button" onClick={close}>Cancelar</button>
+              <SavePhotoChangesButton />
+            </div>
+          </form>
+        </div>
+      </dialog>
+    </>
   );
 }
 
@@ -110,6 +155,16 @@ function SavePhotoButton() {
     <button className="button primary" type="submit" disabled={pending}>
       {pending ? <LoaderCircle className="spin" size={18} /> : <Plus size={18} />}
       <span>{pending ? "Enviando..." : "Salvar foto"}</span>
+    </button>
+  );
+}
+
+function SavePhotoChangesButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button className="button primary" type="submit" disabled={pending}>
+      {pending ? <LoaderCircle className="spin" size={18} /> : <Save size={18} />}
+      <span>{pending ? "Salvando..." : "Salvar alterações"}</span>
     </button>
   );
 }

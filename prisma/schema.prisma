@@ -33,11 +33,14 @@ enum MachineStatus {
 }
 
 enum RiskLevel {
+  DESPREZIVEL
   MUITO_BAIXO
   BAIXO
   SIGNIFICATIVO
   ALTO
   MUITO_ALTO
+  EXTREMO
+  INACEITAVEL
 }
 
 enum RiskOrigin {
@@ -273,8 +276,8 @@ model RiskAssessment {
   documentNumber  String
   revision        String
   category        SafetyCategory
-  hrnCurrent      Int
-  hrnResidual     Int
+  hrnCurrent      Float
+  hrnResidual     Float
   riskLevel       RiskLevel
   issuedAt        DateTime
   expiresAt       DateTime?

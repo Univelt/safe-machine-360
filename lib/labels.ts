@@ -1,47 +1,63 @@
 import type { ActivityPriority, ActivityStatus, ChecklistAnswer, DocumentKind, DocumentStatus, MachineStatus, RiskLevel, SafetyCategory, UserRole } from "@prisma/client";
 
 export const riskLabels: Record<RiskLevel, string> = {
-  MUITO_BAIXO: "Baixo",
+  DESPREZIVEL: "Desprezível",
+  MUITO_BAIXO: "Muito baixo",
   BAIXO: "Baixo",
-  SIGNIFICATIVO: "Médio",
+  SIGNIFICATIVO: "Significante",
   ALTO: "Alto",
   MUITO_ALTO: "Muito alto",
+  EXTREMO: "Extremo",
+  INACEITAVEL: "Inaceitável",
 };
 
 export const riskTones: Record<RiskLevel, string> = {
-  MUITO_BAIXO: "risk-low",
+  DESPREZIVEL: "risk-negligible",
+  MUITO_BAIXO: "risk-very-low",
   BAIXO: "risk-low",
-  SIGNIFICATIVO: "risk-medium",
+  SIGNIFICATIVO: "risk-significant",
   ALTO: "risk-high",
-  MUITO_ALTO: "risk-critical",
+  MUITO_ALTO: "risk-very-high",
+  EXTREMO: "risk-extreme",
+  INACEITAVEL: "risk-unacceptable",
 };
 
-export const riskLevelOptions = [...new Map(
-  Object.entries(riskLabels).map(([value, label]) => [label, { value: value as RiskLevel, label }]),
-).values()];
+export const riskLevelOptions = Object.entries(riskLabels).map(([value, label]) => ({ value: value as RiskLevel, label }));
 
 const riskRank: Record<RiskLevel, number> = {
-  MUITO_BAIXO: 0,
-  BAIXO: 0,
-  SIGNIFICATIVO: 1,
-  ALTO: 2,
-  MUITO_ALTO: 3,
+  DESPREZIVEL: 0,
+  MUITO_BAIXO: 1,
+  BAIXO: 2,
+  SIGNIFICATIVO: 3,
+  ALTO: 4,
+  MUITO_ALTO: 5,
+  EXTREMO: 6,
+  INACEITAVEL: 7,
 };
 
 export function parseHrnValue(value: unknown) {
-  const text = String(value ?? "").trim();
-  if (!/^\d+$/.test(text)) return null;
-  const parsed = Number(text);
-  return Number.isSafeInteger(parsed) ? parsed : null;
+  const valueText = String(value ?? "").trim();
+  if (!/^\d+(?:[.,]\d+)?$/.test(valueText)) return null;
+  const parsed = Number(valueText.replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+export function normalizeHrnValue(value: unknown) {
+  const parsed = parseHrnValue(value);
+  return parsed === null ? null : String(parsed);
 }
 
 export function classifyHrn(value: unknown): RiskLevel | null {
   const hrn = parseHrnValue(value);
   if (hrn === null) return null;
-  if (hrn <= 5) return "BAIXO";
+  if (hrn <= 1) return "DESPREZIVEL";
+  if (hrn <= 5) return "MUITO_BAIXO";
+  if (hrn <= 10) return "BAIXO";
   if (hrn <= 50) return "SIGNIFICATIVO";
-  if (hrn <= 500) return "ALTO";
-  return "MUITO_ALTO";
+  if (hrn <= 100) return "ALTO";
+  if (hrn <= 500) return "MUITO_ALTO";
+  if (hrn <= 1000) return "EXTREMO";
+  return "INACEITAVEL";
 }
 
 export function classifyHrnPair(current: unknown, residual?: unknown): RiskLevel | null {
@@ -102,6 +118,7 @@ export const auditActionLabels: Record<string, string> = {
   MACHINE_UPDATED: "Máquina atualizada",
   MACHINE_DELETED: "Máquina excluída",
   MACHINE_PHOTO_UPLOADED: "Fotos adicionadas",
+  MACHINE_PHOTO_UPDATED: "Foto atualizada",
   MACHINE_PHOTO_DELETED: "Foto removida",
   DOCUMENT_CREATED: "Documento cadastrado",
   ACTIVITY_CREATED: "Atividade cadastrada",
