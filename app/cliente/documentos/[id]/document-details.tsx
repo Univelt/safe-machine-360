@@ -23,10 +23,12 @@ export function DocumentDetails({ document, companyName }: { document: DocumentV
       <div className="detail-main-column">
         <section className={`panel document-preview ${document.hasFile ? "has-file" : ""}`}>
           <header><span>{document.hasFile ? <><Paperclip size={15} /> Arquivo anexado</> : <><LockKeyhole size={15} /> Sem anexo</>}</span><small>{document.hasFile ? `${document.format} · ${document.size}` : "Cadastre novamente com um arquivo para disponibilizar o download"}</small></header>
-          {document.hasFile && isImageFormat(document.format) ? <div className="document-preview-media"><Image src={fileHref} alt={document.name} width={1000} height={700} unoptimized /></div> : <div>
+          {document.hasFile && isImageFormat(document.format) ? <div className="document-preview-media"><Image src={fileHref} alt={document.name} width={1000} height={700} unoptimized /></div>
+            : document.hasFile && isPdfFormat(document.format) ? <div className="document-preview-pdf"><iframe src={fileHref} title={`Prévia do documento ${document.name}`} /></div>
+              : <div>
             <FileKey2 size={45} />
-            <strong>{document.hasFile ? "Documento disponível para a empresa" : "Nenhum arquivo foi anexado neste cadastro"}</strong>
-            <p>{document.hasFile ? "O arquivo permanece restrito à empresa da sessão. Visualize em nova aba ou baixe para conferência." : "O registro foi salvo, mas ainda não há um PDF ou imagem vinculado."}</p>
+            <strong>{document.hasFile ? "Prévia indisponível neste formato" : "Nenhum arquivo foi anexado neste cadastro"}</strong>
+            <p>{document.hasFile ? `O arquivo ${document.format} permanece restrito à empresa. Use as opções para abrir ou baixar e conferir o documento.` : "O registro foi salvo, mas ainda não há um PDF ou imagem vinculado."}</p>
             {document.hasFile ? <a className="button secondary" href={fileHref} target="_blank" rel="noreferrer"><ShieldCheck size={16} /> Abrir arquivo</a> : null}
           </div>}
         </section>
@@ -50,4 +52,8 @@ function validityMessage(document: DocumentView) {
 
 function isImageFormat(format: string) {
   return ["PNG", "JPG", "JPEG", "WEBP"].includes(format.toUpperCase());
+}
+
+function isPdfFormat(format: string) {
+  return format.toUpperCase() === "PDF";
 }
