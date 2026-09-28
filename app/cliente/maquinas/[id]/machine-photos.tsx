@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { Check, Expand, LoaderCircle, Pencil, Plus, Save, ShieldAlert, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useRef } from "react";
 import { useFormStatus } from "react-dom";
@@ -34,13 +34,7 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
               <strong>{photo.caption}</strong>
               <small>{formatDate(photo.takenAt)}</small>
             </header>
-            <div className="photo-preview-media">
-              <Image src={photo.url ?? ""} alt={`Vista da máquina ${machine.name}, código ${machine.code} — foto ${index + 1}`} width={520} height={320} unoptimized />
-              <span className={`photo-norm-badge ${photo.compliant ? "ok" : "fail"}`} title={photo.compliant ? "Dentro da norma" : "Fora da norma"}>
-                {photo.compliant ? <Check size={16} strokeWidth={3} /> : <X size={16} strokeWidth={3} />}
-                <span className="sr-only">{photo.compliant ? "Dentro da norma" : "Fora da norma"}</span>
-              </span>
-            </div>
+            <PhotoLightbox photo={photo} machine={machine} index={index} />
             {canMutate && (
               <div className="photo-card-actions">
                 <EditPhotoModal machineId={machine.id} photo={photo} />
@@ -59,6 +53,50 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
       </div>
       <ChangeLog at={machine.lastPhotoChange?.at} by={machine.lastPhotoChange?.by} />
     </section>
+  );
+}
+
+function PhotoLightbox({ photo, machine, index }: { photo: MachineView["photos"][number]; machine: MachineView; index: number }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = `photo-preview-${photo.id}`;
+  const close = () => dialogRef.current?.close();
+  const alt = `Vista da máquina ${machine.name}, código ${machine.code} — foto ${index + 1}`;
+
+  return (
+    <>
+      <div className="photo-preview-media">
+        <button type="button" className="photo-expand" onClick={() => dialogRef.current?.showModal()} aria-label={`Ampliar foto ${photo.caption}`} aria-haspopup="dialog">
+          <Image src={photo.url ?? ""} alt={alt} width={520} height={320} unoptimized />
+          <span className="photo-expand-hint"><Expand size={15} /> Ampliar</span>
+        </button>
+        <span className={`photo-norm-badge ${photo.compliant ? "ok" : "fail"}`} title={photo.compliant ? "Dentro da norma" : "Fora da norma"}>
+          {photo.compliant ? <Check size={16} strokeWidth={3} /> : <X size={16} strokeWidth={3} />}
+          <span className="sr-only">{photo.compliant ? "Dentro da norma" : "Fora da norma"}</span>
+        </span>
+      </div>
+      <dialog ref={dialogRef} className="photo-lightbox" aria-labelledby={titleId} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+        <div className="photo-lightbox-card">
+          <header className="photo-lightbox-head">
+            <div><span className="panel-kicker">{machine.code}</span><h3 id={titleId}>{photo.caption}</h3></div>
+            <button className="icon-button" type="button" onClick={close} aria-label="Fechar imagem ampliada"><X size={20} /></button>
+          </header>
+          <div className="photo-lightbox-image-wrap">
+            <Image src={photo.url ?? ""} alt={alt} width={1600} height={1200} unoptimized />
+          </div>
+          <div className="photo-lightbox-details">
+            <span className={`photo-lightbox-compliance ${photo.compliant ? "ok" : "fail"}`}>
+              {photo.compliant ? <Check size={15} /> : <ShieldAlert size={15} />}
+              {photo.compliant ? "Atende à norma" : "Não atende à norma"}
+            </span>
+            <span className="photo-lightbox-date">Foto registrada em {formatDate(photo.takenAt)}</span>
+            <section className="photo-observation">
+              <h4>Observação</h4>
+              <p>{photo.observation?.trim() || "Nenhuma observação informada para esta foto."}</p>
+            </section>
+          </div>
+        </div>
+      </dialog>
+    </>
   );
 }
 
@@ -83,6 +121,7 @@ function EditPhotoModal({ machineId, photo }: { machineId: string; photo: Machin
             <input type="hidden" name="machineId" value={machineId} />
             <input type="hidden" name="photoId" value={photo.id} />
             <label>Nome da foto<input name="caption" type="text" required defaultValue={photo.caption} autoFocus /></label>
+            <label>Observação<textarea name="observation" rows={4} maxLength={2000} defaultValue={photo.observation ?? ""} placeholder="Descreva o que esta imagem registra, um detalhe observado ou o motivo da avaliação." /></label>
             <label>Data<input name="takenAt" type="date" required defaultValue={dateInputValue(photo.takenAt)} /></label>
             <fieldset className="photo-compliance-choice">
               <legend>Conformidade</legend>
@@ -132,6 +171,7 @@ function AddPhotoModal({ machineId }: { machineId: string }) {
           <form className="photo-modal-form" action={uploadMachinePhotoAction}>
             <input type="hidden" name="machineId" value={machineId} />
             <label>Nome da foto<input name="caption" type="text" required placeholder="Foto frontal" autoFocus /></label>
+            <label>Observação<textarea name="observation" rows={4} maxLength={2000} placeholder="Descreva o que esta imagem registra ou um detalhe importante." /></label>
             <label>Data<input name="takenAt" type="date" required defaultValue={todayInputValue()} /></label>
             <label className="file-field">Arquivo<input name="file" type="file" required accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" /></label>
             <label className="checkbox-row">

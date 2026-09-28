@@ -235,6 +235,7 @@ model MachinePhoto {
   kind       PhotoKind
   url        String?
   caption    String
+  observation String?
   takenAt    DateTime  @default(now())
   compliant  Boolean   @default(true)
   createdAt  DateTime  @default(now())

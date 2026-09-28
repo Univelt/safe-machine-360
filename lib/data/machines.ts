@@ -83,6 +83,7 @@ export function toMachineView(machine: MachineRecord): MachineView {
         id: photo.id,
         kind: photo.kind,
         caption: photo.caption,
+        observation: photo.observation,
         takenAt: photo.takenAt.toISOString(),
         compliant: photo.compliant,
         url: `/api/machines/${machine.id}/photos/${photo.id}/file`,

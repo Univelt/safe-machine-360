@@ -5,6 +5,7 @@ export type MachinePhotoView = {
   kind: PhotoKind;
   url: string | null;
   caption: string;
+  observation: string | null;
   takenAt: string;
   compliant: boolean;
 };

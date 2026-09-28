@@ -256,6 +256,7 @@ export async function uploadMachinePhotoAction(formData: FormData) {
       machineId: machine.id,
       kind: "OTHER",
       caption,
+      observation: optional(formData, "observation"),
       takenAt: dateValue(formData, "takenAt"),
       compliant: checked(formData, "compliant"),
     },
@@ -307,7 +308,7 @@ export async function updateMachinePhotoAction(formData: FormData) {
   if (!caption) throw new Error("Informe o nome da foto.");
   await prisma.machinePhoto.update({
     where: { id: photo.id },
-    data: { caption, takenAt: dateValue(formData, "takenAt"), compliant: checked(formData, "compliant") },
+    data: { caption, observation: optional(formData, "observation"), takenAt: dateValue(formData, "takenAt"), compliant: checked(formData, "compliant") },
   });
   await writeAudit(photo.machine.companyId, session.id, "MACHINE_PHOTO_UPDATED", "MachinePhoto", photo.id, `Foto "${caption}" atualizada em ${photo.machine.code}.`, { operation: "UPDATE", parentId: machineId });
   revalidatePath(`/cliente/maquinas/${machineId}`);

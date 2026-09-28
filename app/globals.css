@@ -367,6 +367,10 @@ tbody tr:hover { background: #fbfcfd; }
 .photo-preview-head small { color: var(--muted); font-size: 11px; font-weight: 600; }
 .photo-preview-media { position: relative; background: #eef3f7; }
 .photo-preview-media img { display: block; width: 100%; height: 168px; object-fit: cover; }
+.photo-expand { position: relative; display: block; width: 100%; padding: 0; overflow: hidden; border: 0; background: transparent; cursor: zoom-in; }
+.photo-expand:focus-visible { outline: 3px solid #2e78c5; outline-offset: -3px; }
+.photo-expand-hint { position: absolute; right: 9px; bottom: 9px; display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: white; background: rgba(7,23,43,.76); font-size: 11px; font-weight: 700; opacity: 0; transition: opacity .18s ease; }
+.photo-expand:hover .photo-expand-hint, .photo-expand:focus-visible .photo-expand-hint { opacity: 1; }
 .photo-norm-badge { position: absolute; left: 10px; bottom: 10px; display: grid; place-items: center; width: 32px; height: 32px; border: 2px solid white; border-radius: 50%; color: white; box-shadow: 0 2px 8px rgba(7, 23, 43, .18); }
 .photo-norm-badge.ok { background: var(--green); }
 .photo-norm-badge.fail { background: var(--red); }
@@ -386,6 +390,22 @@ tbody tr:hover { background: #fbfcfd; }
 .photo-modal-form { display: grid; gap: 14px; padding: 18px; }
 .photo-modal-form label { display: flex; flex-direction: column; gap: 6px; color: #334256; font-size: 13px; font-weight: 700; }
 .photo-modal-form input[type="text"], .photo-modal-form input[type="date"], .photo-modal-form input[type="file"] { min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; }
+.photo-modal-form textarea { min-height: 92px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; line-height: 1.5; resize: vertical; }
+.photo-modal-form textarea:focus-visible, .photo-modal-form input:focus-visible { outline: 3px solid rgba(46,120,197,.2); border-color: #2e78c5; }
+.photo-lightbox { width: min(1100px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0; overflow: auto; border: 1px solid rgba(255,255,255,.5); border-radius: var(--radius-lg); background: white; box-shadow: 0 24px 80px rgba(0,0,0,.3); }
+.photo-lightbox::backdrop { background: rgba(4,15,30,.84); backdrop-filter: blur(3px); }
+.photo-lightbox-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.97); }
+.photo-lightbox-head h3 { margin: 4px 0 0; color: var(--ink); font-size: 17px; }
+.photo-lightbox-image-wrap { display: grid; place-items: center; min-height: 180px; max-height: min(62dvh, 720px); padding: 14px; background: #07172b; }
+.photo-lightbox-image-wrap img { display: block; width: 100%; height: min(62dvh, 720px); object-fit: contain; }
+.photo-lightbox-details { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px 18px; padding: 16px 20px 20px; }
+.photo-lightbox-compliance { display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 750; }
+.photo-lightbox-compliance.ok { color: #08734d; background: #e6f6ef; }
+.photo-lightbox-compliance.fail { color: #b52d38; background: #fff0f1; }
+.photo-lightbox-date { color: var(--muted); font-size: 12px; }
+.photo-observation { grid-column: 1 / -1; padding: 13px 15px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #f8fafc; }
+.photo-observation h4 { margin: 0 0 5px; color: #334256; font-size: 12px; font-weight: 800; }
+.photo-observation p { margin: 0; color: var(--ink); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .photo-modal-form .checkbox-row { flex-direction: row; align-items: center; margin: 0; color: var(--ink); font-size: 13px; font-weight: 700; }
 .photo-modal-form .checkbox-row input { width: 16px; height: 16px; accent-color: var(--green); }
 .photo-compliance-choice { margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #f8fafc; }
