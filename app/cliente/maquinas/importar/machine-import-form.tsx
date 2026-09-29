@@ -46,7 +46,7 @@ export function MachineImportForm({
     return preview.rows.filter((row) => selected[row.rowNumber] && !row.existsInCompany);
   }, [preview, selected]);
 
-  const missingHrn = Boolean(preview?.rows.length && preview.rows.every((row) => !row.hrnCurrent));
+  const missingHrn = Boolean(preview?.rows.length && preview.rows.every((row) => row.hrnCurrent === null));
 
   function onCompanyChange(value: string) {
     setCompanyId(value);
@@ -204,7 +204,7 @@ export function MachineImportForm({
               ))}
             </ul>
             <p>TAG e série saem do código MQ no nome, quando existir. Status fica operacional e fontes de energia como “Não informado”. Fotos da máquina e do painel elétrico ficam de fora desta importação.</p>
-            {missingHrn && <p>A coluna Cálculo HRN está vazia nesta planilha; o HRN será gravado como 0 até uma APR posterior.</p>}
+            {missingHrn && <p>A planilha não informa HRN. O campo ficará vazio e o nível de risco importado será mantido como classificação manual.</p>}
             {preview.skippedRows.length > 0 && (
               <p>{preview.skippedRows.length} linha(s) ignorada(s) por não terem código nem nome: {preview.skippedRows.map((row) => row.rowNumber).join(", ")}.</p>
             )}

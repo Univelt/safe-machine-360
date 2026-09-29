@@ -1,12 +1,12 @@
 "use server";
 
-import type { MachineStatus, RiskLevel } from "@prisma/client";
-import { classifyHrn } from "@/lib/labels";
+import type { MachineStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth/guards";
 import { canManageCompany, isSuperAdmin } from "@/lib/auth/session";
 import {
   applyImportConflicts,
+  sanitizeMachineImportDraft,
   type MachineImportDraft,
   type MachineImportPreview,
 } from "@/lib/import/machine-import-map";
@@ -51,7 +51,7 @@ function parsePreviewPayload(value: string): Omit<MachineImportPreview, "rows"> 
   }
   if (!parsed || typeof parsed !== "object") throw new Error("Não foi possível ler os dados extraídos da planilha.");
   const payload = parsed as Partial<MachineImportPreview>;
-  const rows = Array.isArray(payload.rows) ? payload.rows.map(sanitizeDraft).filter((row): row is MachineImportDraft => Boolean(row)) : [];
+  const rows = Array.isArray(payload.rows) ? payload.rows.map(sanitizeMachineImportDraft).filter((row): row is MachineImportDraft => Boolean(row)) : [];
   if (!rows.length) throw new Error("A planilha não contém máquinas para importar.");
   return {
     sheetName: String(payload.sheetName ?? "Planilha").trim() || "Planilha",
@@ -89,41 +89,6 @@ export async function previewMachineImportAction(formData: FormData): Promise<Ma
   };
 }
 
-function sanitizeDraft(value: unknown): MachineImportDraft | null {
-  if (!value || typeof value !== "object") return null;
-  const row = value as Record<string, unknown>;
-  const code = String(row.code ?? "").trim();
-  const name = String(row.name ?? "").trim();
-  if (!code || !name) return null;
-  const parsedRiskLevel = String(row.riskLevel ?? "SIGNIFICATIVO") as RiskLevel;
-  const allowedRisk: RiskLevel[] = ["DESPREZIVEL", "MUITO_BAIXO", "BAIXO", "SIGNIFICATIVO", "ALTO", "MUITO_ALTO", "EXTREMO", "INACEITAVEL"];
-  const year = Number(row.year);
-  const hrnCurrent = Number(row.hrnCurrent);
-  const hrnText = Number.isFinite(hrnCurrent) && hrnCurrent >= 0 ? String(hrnCurrent) : "";
-  return {
-    rowNumber: Number(row.rowNumber) || 0,
-    code,
-    name,
-    tag: String(row.tag ?? code).trim() || code,
-    serial: String(row.serial ?? "Não identificado").trim() || "Não identificado",
-    assetTag: String(row.assetTag ?? row.tag ?? code).trim() || code,
-    machineType: String(row.machineType ?? "").trim() || null,
-    manufacturer: String(row.manufacturer ?? "Não identificado").trim() || "Não identificado",
-    model: String(row.model ?? "Não identificado").trim() || "Não identificado",
-    year: Number.isFinite(year) ? Math.round(year) : 0,
-    sector: String(row.sector ?? "Não identificado").trim() || "Não identificado",
-    area: String(row.area ?? "Geral").trim() || "Geral",
-    capacity: String(row.capacity ?? "").trim() || null,
-    riskLevel: classifyHrn(hrnText) ?? (allowedRisk.includes(parsedRiskLevel) ? parsedRiskLevel : "SIGNIFICATIVO"),
-    hrnCurrent: Number.isFinite(hrnCurrent) && hrnCurrent >= 0 ? hrnCurrent : 0,
-    description: String(row.description ?? name).trim() || name,
-    observations: String(row.observations ?? "").trim() || null,
-    warnings: Array.isArray(row.warnings) ? row.warnings.map((warning) => String(warning)).filter(Boolean) : [],
-    existsInCompany: Boolean(row.existsInCompany),
-    duplicateInFile: Boolean(row.duplicateInFile),
-  };
-}
-
 export async function confirmMachineImportAction(formData: FormData): Promise<MachineImportConfirmResult> {
   const { session, companyId, unitId } = await resolveScope(formData);
   let payload: unknown;
@@ -134,7 +99,7 @@ export async function confirmMachineImportAction(formData: FormData): Promise<Ma
   }
   if (!Array.isArray(payload) || !payload.length) throw new Error("Selecione ao menos uma máquina para cadastrar.");
 
-  const drafts = payload.map(sanitizeDraft).filter((row): row is MachineImportDraft => Boolean(row));
+  const drafts = payload.map(sanitizeMachineImportDraft).filter((row): row is MachineImportDraft => Boolean(row));
   if (!drafts.length) throw new Error("Nenhuma máquina válida para cadastrar.");
 
   const existing = await prisma.machine.findMany({
@@ -174,8 +139,10 @@ export async function confirmMachineImportAction(formData: FormData): Promise<Ma
         sector: row.sector,
         area: row.area,
         capacity: row.capacity,
-        hrnCurrent: String(row.hrnCurrent),
+        hrnCurrent: row.hrnCurrent === null ? "" : String(row.hrnCurrent),
         riskLevel: row.riskLevel,
+        riskOrigin: row.riskOrigin,
+        manualRiskLevel: row.manualRiskLevel,
         energySources: "Não informado",
         observations: row.observations,
         status: "OPERACIONAL" as MachineStatus,

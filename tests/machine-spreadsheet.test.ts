@@ -8,8 +8,10 @@ import {
   classifyHeader,
   draftFromMappedRow,
   extractAssetTag,
+  parseHrn,
   parseRiskLevel,
   parseYear,
+  sanitizeMachineImportDraft,
   splitSectorArea,
 } from "../lib/import/machine-import-map";
 import { parseMachineSpreadsheet } from "../lib/import/machine-spreadsheet";
@@ -64,6 +66,8 @@ test("maps risk labels, year fragments and MQ tags", () => {
   assert.equal(parseRiskLevel("RISCO BAIXO"), "BAIXO");
   assert.equal(parseYear("05/1999"), 1999);
   assert.equal(parseYear("NÃO IDENTIFICADO"), 0);
+  assert.equal(parseHrn(""), null);
+  assert.equal(parseHrn("0"), 0);
   assert.equal(extractAssetTag("PRE - 030 (MQ - 337)", "ASSA ABLOY - 001"), "MQ - 337");
   assert.deepEqual(splitSectorArea("ESTAMPARIA\nFUNDO DA LINHA"), { sector: "ESTAMPARIA", area: "FUNDO DA LINHA" });
 });
@@ -96,6 +100,33 @@ test("parses NR-12 CSV with semicolon delimiter", () => {
   assert.equal(parsed.rows[0]?.name, "PRE - 030 (MQ - 337)");
   assert.equal(parsed.rows[0]?.machineType, "PRENSA");
   assert.equal(parseCsvToGrid(csv)[1]?.[1], "ASSA ABLOY - 001");
+});
+
+test("preserves a spreadsheet risk without HRN as manual and leaves HRN empty", () => {
+  const csv = [
+    "CÓDIGO INTERNO;NOME DA MÁQUINA;SETOR;FABRICANTE;RISCO;HRN ATUAL",
+    "M-001;Prensa;Estamparia;Fabricante;Risco Inaceitável;",
+    "M-002;Esteira;Montagem;Fabricante;Risco Alto;0",
+  ].join("\n");
+  const parsed = parseMachineCsv(csv);
+  const withoutHrn = parsed.rows[0];
+  const explicitZero = parsed.rows[1];
+
+  assert.equal(withoutHrn?.hrnCurrent, null);
+  assert.equal(withoutHrn?.riskLevel, "INACEITAVEL");
+  assert.equal(withoutHrn?.riskOrigin, "MANUAL");
+  assert.equal(withoutHrn?.manualRiskLevel, "INACEITAVEL");
+  assert.match(withoutHrn?.warnings.join(" ") ?? "", /HRN não informado/);
+
+  const sanitized = sanitizeMachineImportDraft(JSON.parse(JSON.stringify(withoutHrn)));
+  assert.equal(sanitized?.hrnCurrent, null);
+  assert.equal(sanitized?.riskLevel, "INACEITAVEL");
+  assert.equal(sanitized?.riskOrigin, "MANUAL");
+  assert.equal(sanitized?.manualRiskLevel, "INACEITAVEL");
+
+  assert.equal(explicitZero?.hrnCurrent, 0);
+  assert.equal(explicitZero?.riskLevel, "DESPREZIVEL");
+  assert.equal(explicitZero?.riskOrigin, "AUTOMATIC");
 });
 
 test("builds a machine draft and flags codes that already exist", () => {

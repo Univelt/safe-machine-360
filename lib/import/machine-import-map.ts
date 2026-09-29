@@ -1,5 +1,5 @@
-import type { RiskLevel } from "@prisma/client";
-import { riskLabels } from "../labels";
+import type { RiskLevel, RiskOrigin } from "@prisma/client";
+import { classifyHrn, riskLabels } from "../labels";
 
 export type MachineImportColumn =
   | "code"
@@ -30,7 +30,9 @@ export type MachineImportDraft = {
   area: string;
   capacity: string | null;
   riskLevel: RiskLevel;
-  hrnCurrent: number;
+  riskOrigin: RiskOrigin;
+  manualRiskLevel: RiskLevel | null;
+  hrnCurrent: number | null;
   description: string;
   observations: string | null;
   warnings: string[];
@@ -144,11 +146,11 @@ export function parseYear(value: string) {
 
 export function parseHrn(value: string) {
   const text = cellToText(value).replace(",", ".");
-  if (isUnidentified(text)) return 0;
+  if (isUnidentified(text)) return null;
   const match = text.match(/-?\d+(?:\.\d+)?/);
-  if (!match) return 0;
+  if (!match) return null;
   const parsed = Number(match[0]);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export function parseRiskLevel(value: string): RiskLevel {
@@ -206,9 +208,13 @@ export function draftFromMappedRow(rowNumber: number, cells: Partial<Record<Mach
   const capacityText = oneLine(cells.capacity ?? "");
   const description = cellToText(cells.description ?? "") || resolvedName;
   const observations = cellToText(cells.observations ?? "");
-  const riskLevel = parseRiskLevel(cells.riskLevel ?? "");
+  const importedRiskLevel = parseRiskLevel(cells.riskLevel ?? "");
   const year = parseYear(cells.year ?? "");
-  const hrnCurrent = parseHrn(cells.hrnCurrent ?? "");
+  const hrnSource = oneLine(cells.hrnCurrent ?? "");
+  const hrnCurrent = parseHrn(hrnSource);
+  const riskOrigin: RiskOrigin = hrnCurrent === null ? "MANUAL" : "AUTOMATIC";
+  const riskLevel = hrnCurrent === null ? importedRiskLevel : classifyHrn(String(hrnCurrent)) ?? importedRiskLevel;
+  const manualRiskLevel = riskOrigin === "MANUAL" ? riskLevel : null;
   const warnings: string[] = [];
 
   if (!code) warnings.push("Código interno ausente; o nome será usado como código.");
@@ -216,6 +222,11 @@ export function draftFromMappedRow(rowNumber: number, cells: Partial<Record<Mach
   if (isUnidentified(cells.manufacturer ?? "")) warnings.push("Fabricante não identificado.");
   if (isUnidentified(cells.model ?? "")) warnings.push("Modelo não identificado.");
   if (!cellToText(cells.riskLevel ?? "")) warnings.push("Nível de risco não informado; será cadastrado como significativo.");
+  if (hrnCurrent === null) {
+    warnings.push(hrnSource
+      ? "HRN inválido; ficará vazio e o risco informado será mantido manualmente."
+      : "HRN não informado; ficará vazio e o risco informado será mantido manualmente.");
+  }
 
   return {
     rowNumber,
@@ -232,12 +243,71 @@ export function draftFromMappedRow(rowNumber: number, cells: Partial<Record<Mach
     area,
     capacity: isUnidentified(capacityText) ? null : capacityText,
     riskLevel,
+    riskOrigin,
+    manualRiskLevel,
     hrnCurrent,
     description,
     observations: observations || null,
     warnings,
     existsInCompany: false,
     duplicateInFile: false,
+  };
+}
+
+const allowedRiskLevels: RiskLevel[] = [
+  "DESPREZIVEL",
+  "MUITO_BAIXO",
+  "BAIXO",
+  "SIGNIFICATIVO",
+  "ALTO",
+  "MUITO_ALTO",
+  "EXTREMO",
+  "INACEITAVEL",
+];
+
+function importedHrn(value: unknown): number | null {
+  if (value === null || value === undefined || (typeof value === "string" && !value.trim())) return null;
+  const parsed = typeof value === "number" ? value : Number(String(value).replace(",", ".").trim());
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+export function sanitizeMachineImportDraft(value: unknown): MachineImportDraft | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const code = String(row.code ?? "").trim();
+  const name = String(row.name ?? "").trim();
+  if (!code || !name) return null;
+
+  const importedRisk = String(row.riskLevel ?? "SIGNIFICATIVO") as RiskLevel;
+  const validImportedRisk = allowedRiskLevels.includes(importedRisk) ? importedRisk : "SIGNIFICATIVO";
+  const hrnCurrent = importedHrn(row.hrnCurrent);
+  const riskLevel = hrnCurrent === null ? validImportedRisk : classifyHrn(String(hrnCurrent)) ?? validImportedRisk;
+  const riskOrigin: RiskOrigin = hrnCurrent === null ? "MANUAL" : "AUTOMATIC";
+  const year = Number(row.year);
+
+  return {
+    rowNumber: Number(row.rowNumber) || 0,
+    code,
+    name,
+    tag: String(row.tag ?? code).trim() || code,
+    serial: String(row.serial ?? "Não identificado").trim() || "Não identificado",
+    assetTag: String(row.assetTag ?? row.tag ?? code).trim() || code,
+    machineType: String(row.machineType ?? "").trim() || null,
+    manufacturer: String(row.manufacturer ?? "Não identificado").trim() || "Não identificado",
+    model: String(row.model ?? "Não identificado").trim() || "Não identificado",
+    year: Number.isFinite(year) ? Math.round(year) : 0,
+    sector: String(row.sector ?? "Não identificado").trim() || "Não identificado",
+    area: String(row.area ?? "Geral").trim() || "Geral",
+    capacity: String(row.capacity ?? "").trim() || null,
+    riskLevel,
+    riskOrigin,
+    manualRiskLevel: riskOrigin === "MANUAL" ? riskLevel : null,
+    hrnCurrent,
+    description: String(row.description ?? name).trim() || name,
+    observations: String(row.observations ?? "").trim() || null,
+    warnings: Array.isArray(row.warnings) ? row.warnings.map((warning) => String(warning)).filter(Boolean) : [],
+    existsInCompany: Boolean(row.existsInCompany),
+    duplicateInFile: Boolean(row.duplicateInFile),
   };
 }
 
