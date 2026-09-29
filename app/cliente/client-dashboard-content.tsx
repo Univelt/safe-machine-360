@@ -2,6 +2,7 @@ import { ArrowRight, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, 
 import Link from "next/link";
 import { greetingForNow } from "@/lib/labels";
 import type { ActivityView, MachineView } from "@/lib/data/types";
+import { InfoHint } from "@/app/components/info-hint";
 
 type Metrics = Awaited<ReturnType<typeof import("@/lib/data/catalog").companyMetrics>>;
 
@@ -35,10 +36,10 @@ export function ClientDashboardContent({
         <div className="client-scope"><span>Escopo deste acesso</span><strong>{companyName} · {unitName}</strong><small>{metrics.machineCount} máquinas monitoradas</small></div>
       </section>
       <section className="metric-grid" aria-label="Indicadores da unidade">
-        <article className="metric-card"><div className="metric-icon blue"><Wrench size={20} /></div><div className="metric-copy"><span>Máquinas da empresa</span><strong>{metrics.machineCount}</strong></div></article>
-        <article className="metric-card"><div className="metric-icon red"><ShieldAlert size={20} /></div><div className="metric-copy"><span>Risco alto ou muito alto</span><strong>{metrics.highRisk}</strong></div></article>
-        <article className="metric-card"><div className="metric-icon amber"><CalendarClock size={20} /></div><div className="metric-copy"><span>Documentos a vencer</span><strong>{metrics.expiring}</strong></div></article>
-        <article className="metric-card"><div className="metric-icon green"><ClipboardCheck size={20} /></div><div className="metric-copy"><span>Atividades abertas</span><strong>{metrics.openActivities}</strong></div></article>
+        <article className="metric-card"><div className="metric-icon blue"><Wrench size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">Máquinas da empresa<InfoHint label="O que significa máquinas da empresa">Total de máquinas cadastradas no escopo desta empresa.</InfoHint></div><strong>{metrics.machineCount}</strong></div></article>
+        <article className="metric-card"><div className="metric-icon red"><ShieldAlert size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">Risco alto ou muito alto<InfoHint label="Como é contado o risco alto">Inclui máquinas classificadas como alto, muito alto, extremo ou inaceitável.</InfoHint></div><strong>{metrics.highRisk}</strong></div></article>
+        <article className="metric-card"><div className="metric-icon amber"><CalendarClock size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">Documentos a vencer<InfoHint label="Como são contados os documentos a vencer">Documentos com vencimento nos próximos 30 dias.</InfoHint></div><strong>{metrics.expiring}</strong></div></article>
+        <article className="metric-card"><div className="metric-icon green"><ClipboardCheck size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">Atividades abertas<InfoHint label="O que significa atividades abertas">Ações ainda não concluídas, incluindo as que estão em andamento ou atrasadas.</InfoHint></div><strong>{metrics.openActivities}</strong></div></article>
       </section>
       <div className="client-main-grid">
         <section className="panel client-attention">
@@ -56,7 +57,7 @@ export function ClientDashboardContent({
         </section>
         <section className="panel client-compliance">
           <div className="panel-header"><div><span className="panel-kicker">Conformidade NR-12</span><h2>Situação da empresa</h2></div><Gauge size={19} /></div>
-          <div className="client-score"><strong>{metrics.compliance}%</strong><span>documentação em conformidade</span></div>
+          <div className="client-score"><strong>{metrics.compliance}%</strong><div className="metric-label-with-info">documentação em conformidade<InfoHint label="Como é calculada a conformidade documental">Percentual de documentos válidos entre todos os documentos cadastrados. Documentos sem validade não entram como válidos; sem documentos, o resultado é 0%.</InfoHint></div></div>
           <div className="progress-track" aria-label={`${metrics.compliance}% em conformidade`}><span style={{ width: `${metrics.compliance}%` }} /></div>
           <dl className="client-score-list">
             <div><dt><CheckCircle2 size={15} /> Registros válidos</dt><dd>{metrics.valid}</dd></div>

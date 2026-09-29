@@ -1,6 +1,7 @@
 import { Building2, CheckCircle2, ChevronRight, FileWarning, ShieldAlert, Wrench } from "lucide-react";
 import Link from "next/link";
 import type { CompanyView } from "@/lib/data/types";
+import { InfoHint } from "@/app/components/info-hint";
 
 export function AdminDashboardContent({
   companies,
@@ -15,10 +16,10 @@ export function AdminDashboardContent({
     <div className="breadcrumb"><span>Portal Univelt</span><ChevronRight size={14} /><strong>Visão administrativa</strong></div>
     <section className="admin-welcome"><div><span className="eyebrow">{contextName ? "Contexto selecionado" : "Operação multiempresa"}</span><h1>{contextName ? contextName : "Visão global da plataforma"}</h1><p>{contextName ? "Indicadores e registros restritos à empresa selecionada." : "Acompanhe clientes, máquinas, conformidade e pendências em um único ambiente."}</p></div></section>
     <section className="metric-grid">
-      <article className="metric-card"><div className="metric-icon blue"><Building2 size={20} /></div><div className="metric-copy"><span>{contextName ? "Empresa no contexto" : "Empresas clientes"}</span><strong>{metrics.companyCount}</strong><small className="positive">{metrics.unitCount} {metrics.unitCount === 1 ? "unidade ativa" : "unidades ativas"}</small></div></article>
-      <article className="metric-card"><div className="metric-icon blue"><Wrench size={20} /></div><div className="metric-copy"><span>Máquinas monitoradas</span><strong>{metrics.machineCount}</strong><small>{contextName ? "Nesta empresa" : "Em todas as empresas"}</small></div></article>
-      <article className="metric-card"><div className="metric-icon red"><ShieldAlert size={20} /></div><div className="metric-copy"><span>Risco alto ou muito alto</span><strong>{metrics.highRisk}</strong></div></article>
-      <article className="metric-card"><div className="metric-icon amber"><FileWarning size={20} /></div><div className="metric-copy"><span>Pendências documentais</span><strong>{metrics.pendingDocs}</strong><small className="warning-text">{metrics.expired} vencidas</small></div></article>
+      <article className="metric-card"><div className="metric-icon blue"><Building2 size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">{contextName ? "Empresa no contexto" : "Empresas clientes"}<InfoHint label="O que representa este total">Quantidade de empresas incluídas no escopo atual da visão administrativa.</InfoHint></div><strong>{metrics.companyCount}</strong><small className="positive">{metrics.unitCount} {metrics.unitCount === 1 ? "unidade ativa" : "unidades ativas"}</small></div></article>
+      <article className="metric-card"><div className="metric-icon blue"><Wrench size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">Máquinas monitoradas<InfoHint label="O que representa máquinas monitoradas">Total de máquinas cadastradas no escopo atual, em uma empresa selecionada ou em todas as empresas.</InfoHint></div><strong>{metrics.machineCount}</strong><small>{contextName ? "Nesta empresa" : "Em todas as empresas"}</small></div></article>
+      <article className="metric-card"><div className="metric-icon red"><ShieldAlert size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">Risco alto ou muito alto<InfoHint label="Como é contado o risco alto">Inclui máquinas classificadas como alto, muito alto, extremo ou inaceitável.</InfoHint></div><strong>{metrics.highRisk}</strong></div></article>
+      <article className="metric-card"><div className="metric-icon amber"><FileWarning size={20} /></div><div className="metric-copy"><div className="metric-label-with-info">Pendências documentais<InfoHint label="O que são pendências documentais">Soma dos documentos vencidos com as máquinas que ainda não possuem documentos vinculados.</InfoHint></div><strong>{metrics.pendingDocs}</strong><small className="warning-text">{metrics.expired} vencidas</small></div></article>
     </section>
     <div className="admin-primary-grid">
       <section className="panel admin-companies-panel">
@@ -27,7 +28,7 @@ export function AdminDashboardContent({
       </section>
       <section className="panel admin-health">
         <div className="panel-header"><div><span className="panel-kicker">Saúde da operação</span><h2>{contextName ? "Resumo da empresa" : "Resumo global"}</h2></div></div>
-        <div className="admin-global-score"><strong>{metrics.compliance}%</strong><span>conformidade média</span><div><span style={{ width: `${metrics.compliance}%` }} /></div></div>
+        <div className="admin-global-score"><strong>{metrics.compliance}%</strong><div className="metric-label-with-info">conformidade média<InfoHint label="Como é calculada a conformidade média">Percentual de documentos válidos entre todos os documentos cadastrados no escopo. Documentos sem validade não entram como válidos.</InfoHint></div><div><span style={{ width: `${metrics.compliance}%` }} /></div></div>
         <div className="admin-health-list">
           <p><span className="status-icon valid"><CheckCircle2 size={15} /></span><span><strong>{metrics.compliantMachines}</strong> máquinas fora do risco alto</span></p>
           <p><span className="status-icon warning"><FileWarning size={15} /></span><span><strong>{metrics.pendingDocs}</strong> pendências documentais</span></p>

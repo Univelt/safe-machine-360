@@ -1274,3 +1274,17 @@ body { line-height: 1.5; }
   }
   .global-scope-note { align-items: flex-start; }
 }
+
+.checklists-page .page-heading-actions { display: flex; align-items: center; gap: 10px; }
+.checklists-page .page-heading-actions .button { width: 180px; min-height: 44px; flex: 0 0 180px; padding-inline: 12px; white-space: nowrap; }
+.metric-copy > .metric-label-with-info { color: var(--muted); font-size: 12px; }
+.document-metrics .metric-label-with-info { color: var(--ink); font-size: 9px; font-weight: 700; }
+.activity-metrics .metric-label-with-info { color: var(--muted); font-size: 12px; }
+.client-score > .metric-label-with-info { margin-top: 7px; color: var(--muted); font-size: 9px; }
+.admin-global-score > .metric-label-with-info { width: auto; height: auto; overflow: visible; margin-top: 0; border-radius: 0; color: #648075; background: transparent; font-size: 8px; }
+.client-dashboard .metric-grid, .admin-dashboard .metric-grid, .activity-metrics, .client-compliance { overflow: visible; }
+
+@media (max-width: 720px) {
+  .checklists-page .page-heading-actions { width: 100%; }
+  .checklists-page .page-heading-actions .button { width: auto; min-width: 0; flex: 1 1 0; }
+}

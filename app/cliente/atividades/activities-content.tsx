@@ -4,6 +4,7 @@ import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, 
 import Link from "next/link";
 import { useState } from "react";
 import type { ActivityView } from "@/lib/data/types";
+import { InfoHint } from "@/app/components/info-hint";
 
 export function ActivitiesContent({ activities, companyName, canCreate }: { activities: ActivityView[]; companyName: string; canCreate: boolean }) {
   const [query, setQuery] = useState("");
@@ -19,10 +20,10 @@ export function ActivitiesContent({ activities, companyName, canCreate }: { acti
     <section className="page-heading"><div><span className="eyebrow">Plano de ação</span><h1>Atividades e pendências</h1><p>Acompanhe responsáveis, prazos, e-mail e evidências das ações de segurança.</p></div>{canCreate && <Link className="button primary" href="/cliente/atividades/nova"><Plus size={16} /> Nova atividade</Link>}</section>
 
     <section className="activity-metrics" aria-label="Indicadores de atividades">
-      <article><span className="activity-metric-icon blue"><CircleDashed size={19} /></span><div><strong>{activities.filter((item) => item.status === "Aberta").length}</strong><span>Abertas</span></div></article>
-      <article><span className="activity-metric-icon amber"><Clock3 size={19} /></span><div><strong>{activities.filter((item) => item.status === "Em andamento").length}</strong><span>Em andamento</span></div></article>
-      <article><span className="activity-metric-icon red"><AlertTriangle size={19} /></span><div><strong>{activities.filter((item) => item.status === "Atrasada").length}</strong><span>Atrasadas</span></div></article>
-      <article><span className="activity-metric-icon green"><CheckCircle2 size={19} /></span><div><strong>{activities.filter((item) => item.status === "Concluída").length}</strong><span>Concluídas</span></div></article>
+      <article><span className="activity-metric-icon blue"><CircleDashed size={19} /></span><div><strong>{activities.filter((item) => item.status === "Aberta").length}</strong><div className="metric-label-with-info">Abertas<InfoHint label="O que são atividades abertas">Ações ainda não iniciadas e que aguardam execução.</InfoHint></div></div></article>
+      <article><span className="activity-metric-icon amber"><Clock3 size={19} /></span><div><strong>{activities.filter((item) => item.status === "Em andamento").length}</strong><div className="metric-label-with-info">Em andamento<InfoHint label="O que são atividades em andamento">Ações que já foram iniciadas e ainda não foram concluídas.</InfoHint></div></div></article>
+      <article><span className="activity-metric-icon red"><AlertTriangle size={19} /></span><div><strong>{activities.filter((item) => item.status === "Atrasada").length}</strong><div className="metric-label-with-info">Atrasadas<InfoHint label="O que são atividades atrasadas">Ações cujo prazo foi ultrapassado e que continuam pendentes.</InfoHint></div></div></article>
+      <article><span className="activity-metric-icon green"><CheckCircle2 size={19} /></span><div><strong>{activities.filter((item) => item.status === "Concluída").length}</strong><div className="metric-label-with-info">Concluídas<InfoHint label="O que são atividades concluídas">Ações marcadas como finalizadas no plano de ação.</InfoHint></div></div></article>
     </section>
 
     {activities.length === 0 && <div className="panel state-message"><CircleDashed size={28} /><strong>Nenhuma atividade cadastrada</strong><p>Crie a primeira atividade para acompanhar responsáveis, prazos e evidências.</p>{canCreate && <Link className="button primary" href="/cliente/atividades/nova"><Plus size={16} /> Criar primeira atividade</Link>}</div>}

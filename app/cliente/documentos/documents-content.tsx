@@ -4,6 +4,7 @@ import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, 
 import Link from "next/link";
 import { useState } from "react";
 import type { DocumentView } from "@/lib/data/types";
+import { InfoHint } from "@/app/components/info-hint";
 
 export function DocumentsContent({ documents, companyName, canCreate }: { documents: DocumentView[]; companyName: string; canCreate: boolean }) {
   const [query, setQuery] = useState("");
@@ -23,10 +24,10 @@ export function DocumentsContent({ documents, companyName, canCreate }: { docume
     <section className="page-heading"><div><span className="eyebrow">Controle documental</span><h1>Documentos e validades</h1><p>Acompanhe apreciações, checklists, laudos e registros vinculados às máquinas.</p></div>{canCreate && <Link className="button primary" href="/cliente/documentos/novo"><Plus size={16} /> Cadastrar documento</Link>}</section>
 
     <section className="document-metrics" aria-label="Indicadores documentais">
-      <article><span className="document-metric-icon valid"><CheckCircle2 size={19} /></span><div><strong>{valid}</strong><span>Válidos</span></div></article>
-      <article><span className="document-metric-icon warning"><CalendarClock size={19} /></span><div><strong>{expiring}</strong><span>A vencer</span></div></article>
-      <article><span className="document-metric-icon danger"><AlertTriangle size={19} /></span><div><strong>{expired}</strong><span>Vencidos</span></div></article>
-      <article><span className="document-metric-icon neutral"><FileCheck2 size={19} /></span><div><strong>{documents.length}</strong><span>Total vinculados</span></div></article>
+      <article><span className="document-metric-icon valid"><CheckCircle2 size={19} /></span><div><strong>{valid}</strong><div className="metric-label-with-info">Válidos<InfoHint label="O que são documentos válidos">Documentos com validade superior a 30 dias, de acordo com a data de vencimento cadastrada.</InfoHint></div></div></article>
+      <article><span className="document-metric-icon warning"><CalendarClock size={19} /></span><div><strong>{expiring}</strong><div className="metric-label-with-info">A vencer<InfoHint label="O que são documentos a vencer">Documentos com vencimento nos próximos 30 dias.</InfoHint></div></div></article>
+      <article><span className="document-metric-icon danger"><AlertTriangle size={19} /></span><div><strong>{expired}</strong><div className="metric-label-with-info">Vencidos<InfoHint label="O que são documentos vencidos">Documentos cuja data de validade já passou.</InfoHint></div></div></article>
+      <article><span className="document-metric-icon neutral"><FileCheck2 size={19} /></span><div><strong>{documents.length}</strong><div className="metric-label-with-info">Total vinculados<InfoHint label="O que compõe o total de documentos">Quantidade total de documentos cadastrados para as máquinas da empresa.</InfoHint></div></div></article>
     </section>
 
     <section className="document-filter-panel" aria-label="Filtros de documentos">
