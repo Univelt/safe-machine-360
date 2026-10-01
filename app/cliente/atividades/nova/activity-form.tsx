@@ -1,8 +1,9 @@
 "use client";
 
+import { SafeForm } from "@/app/components/safe-form";
 import { CheckCircle2, ChevronDown, Search, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { createActivityAction } from "@/app/actions/records";
+import { createActivityAction } from "@/app/actions/safe-records";
 
 type MachineOption = {
   id: string;
@@ -55,7 +56,7 @@ export function ActivityForm({ machines, initialMachineId, defaultResponsible }:
   }
 
   return (
-    <form ref={formRef} className="panel record-form activity-create-form" action={createActivityAction} onSubmit={validate} noValidate>
+    <SafeForm ref={formRef} className="panel record-form activity-create-form" action={createActivityAction} onSubmit={validate} noValidate>
       <div className="full form-field">
         <label htmlFor="machine-search"><span>Máquina <span className="required-mark" aria-hidden="true">*</span></span></label>
         <input type="hidden" name="machineId" value={machineId} />
@@ -118,7 +119,7 @@ export function ActivityForm({ machines, initialMachineId, defaultResponsible }:
         </dl>
       </aside>
       <div className="form-actions"><button className="button primary" type="submit">Salvar atividade</button></div>
-    </form>
+    </SafeForm>
   );
 }
 

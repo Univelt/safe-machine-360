@@ -1,3 +1,4 @@
+import { runSafeRoute } from "@/lib/action-errors";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { canMutateOperations, getSession } from "@/lib/auth/session";
@@ -5,7 +6,7 @@ import { companyFilter } from "@/lib/data/scope";
 import { prisma } from "@/lib/prisma";
 import { deleteStoredFile } from "@/lib/storage";
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; attachmentId: string }> }) {
+async function handleDELETE(_request: Request, { params }: { params: Promise<{ id: string; attachmentId: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!canMutateOperations(session)) return NextResponse.json({ error: "Sem permissão para excluir documentos." }, { status: 403 });
@@ -23,3 +24,5 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   revalidatePath(`/cliente/maquinas/${attachment.actionPlan.machineId}`);
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(...args: Parameters<typeof handleDELETE>) { return runSafeRoute("DELETE /api/action-plans/[id]/attachments/[attachmentId]", () => handleDELETE(...args)); }

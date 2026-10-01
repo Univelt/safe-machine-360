@@ -2,6 +2,7 @@
 
 import { Download, FileText, LoaderCircle, Paperclip, Trash2, UploadCloud, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { describeError, formatApiError, formatFriendlyError } from "@/lib/friendly-errors";
 
 type ExistingAttachment = { id: string; name: string; format: string; size: string; uploadedBy: string; createdAt: Date | string };
 type QueueItem = { id: string; file: File; progress: number; status: "ready" | "uploading" | "error"; error?: string };
@@ -44,15 +45,18 @@ export function ActionPlanAttachments({ planId, attachments, canMutate }: { plan
       requests.current.delete(item.id);
       try {
         const payload = JSON.parse(request.responseText);
-        if (request.status < 200 || request.status >= 300) throw new Error(payload.error ?? "Falha no envio.");
+        if (request.status < 200 || request.status >= 300) {
+          setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: formatApiError(payload, "Não foi possível enviar o arquivo. Confira se ele já aparece na lista antes de tentar novamente.") } : entry));
+          return;
+        }
         setExisting((current) => [{ ...payload.attachment, createdAt: payload.attachment.createdAt }, ...current]);
         setQueue((current) => current.filter((entry) => entry.id !== item.id));
         setFeedback(`${item.file.name} enviado com sucesso.`);
       } catch (error) {
-        setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: error instanceof Error ? error.message : "Falha no envio." } : entry));
+        setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: formatFriendlyError(describeError(error)) } : entry));
       }
     };
-    request.onerror = () => setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: "Falha de rede durante o envio." } : entry));
+    request.onerror = () => { requests.current.delete(item.id); setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: "A conexão foi interrompida durante o envio. Confira sua internet e veja se o arquivo já aparece na lista antes de tentar novamente. [FALHA_CONEXAO]" } : entry)); };
     request.onabort = () => setQueue((current) => current.filter((entry) => entry.id !== item.id));
     request.open("POST", `/api/action-plans/${planId}/attachments`);
     request.send(formData);
@@ -66,14 +70,16 @@ export function ActionPlanAttachments({ planId, attachments, canMutate }: { plan
 
   async function removeExisting(attachment: ExistingAttachment) {
     if (!window.confirm(`Excluir o documento “${attachment.name}”? Esta ação será registrada no histórico.`)) return;
+    try {
     const response = await fetch(`/api/action-plans/${planId}/attachments/${attachment.id}`, { method: "DELETE" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setFeedback(payload.error ?? "Não foi possível excluir o documento.");
+      setFeedback(formatApiError(payload, "Não foi possível excluir o documento. Atualize a lista antes de tentar novamente."));
       return;
     }
     setExisting((current) => current.filter((entry) => entry.id !== attachment.id));
     setFeedback("Documento removido e alteração registrada no histórico.");
+    } catch (cause) { setFeedback(formatFriendlyError(describeError(cause))); }
   }
 
   return (

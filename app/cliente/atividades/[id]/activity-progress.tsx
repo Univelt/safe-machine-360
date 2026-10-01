@@ -1,8 +1,9 @@
 "use client";
 
+import { SafeForm } from "@/app/components/safe-form";
 import { useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
-import { updateActivityProgressAction } from "@/app/actions/records";
+import { useSafeFormStatus } from "@/app/components/safe-form";
+import { updateActivityProgressAction } from "@/app/actions/safe-records";
 
 const presets = [0, 25, 50, 75, 100];
 
@@ -23,7 +24,7 @@ export function ActivityProgress({ activityId, progress, canMutate }: { activity
       <div><span>Progresso da execução</span><strong>{value}%</strong></div>
       <span className="activity-progress-track"><span style={{ width: `${value}%` }} /></span>
       {canMutate ? (
-        <form ref={formRef} action={updateActivityProgressAction} className="activity-progress-form">
+        <SafeForm ref={formRef} action={updateActivityProgressAction} className="activity-progress-form">
           <input type="hidden" name="activityId" value={activityId} />
           <input type="hidden" name="progress" value={value} />
           <label className="sr-only" htmlFor={`progress-${activityId}`}>Avançar progresso</label>
@@ -45,13 +46,13 @@ export function ActivityProgress({ activityId, progress, canMutate }: { activity
             ))}
           </div>
           <ProgressHint />
-        </form>
+        </SafeForm>
       ) : <p className="progress-hint">O progresso é atualizado pela equipe responsável pela atividade.</p>}
     </div>
   );
 }
 
 function ProgressHint() {
-  const { pending } = useFormStatus();
+  const { pending } = useSafeFormStatus();
   return <p className="progress-hint">{pending ? "Salvando progresso..." : "Arraste a barra ou toque em um percentual. 100% conclui a atividade."}</p>;
 }

@@ -1,6 +1,6 @@
 import type { MachineView } from "@/lib/data/types";
 import { HrnFields } from "@/app/components/hrn-fields";
-import { createMachineAction, updateMachineAction } from "@/app/actions/records";
+import { createMachineAction, updateMachineAction } from "@/app/actions/safe-records";
 import { isSuperAdmin } from "@/lib/auth/session";
 import type { SessionUser } from "@/lib/auth/session";
 import type { listCompanies, listUnits } from "@/lib/data/machines";

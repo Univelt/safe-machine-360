@@ -1,3 +1,4 @@
+import { UserFacingError } from "@/lib/friendly-errors";
 import {
   classifyHeader,
   draftFromMappedRow,
@@ -53,7 +54,7 @@ export function parseMachineGrid(grid: string[][], sheetName: string): Omit<Mach
   }
 
   if (headerRowIndex < 0 || !columnMap.size) {
-    throw new Error("Não encontrei o cabeçalho da relação de máquinas. Use a planilha NR-12 com código interno, nome, setor e fabricante.");
+    throw new UserFacingError("Não encontrei o cabeçalho da relação de máquinas. Use a planilha NR-12 com código interno, nome, setor e fabricante.");
   }
 
   const drafts: MachineImportPreview["rows"] = [];
@@ -75,7 +76,7 @@ export function parseMachineGrid(grid: string[][], sheetName: string): Omit<Mach
     }
   }
 
-  if (!drafts.length) throw new Error("A planilha não contém máquinas para importar.");
+  if (!drafts.length) throw new UserFacingError("A planilha não contém máquinas para importar.");
 
   return {
     sheetName,

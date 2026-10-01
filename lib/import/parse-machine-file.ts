@@ -1,3 +1,4 @@
+import { UserFacingError } from "@/lib/friendly-errors";
 import { MACHINE_IMPORT_MAX_BYTES } from "./machine-table";
 import type { MachineImportPreview } from "./machine-import-map";
 
@@ -14,12 +15,12 @@ function isXlsx(file: File) {
 }
 
 export async function parseMachineFile(file: File): Promise<Omit<MachineImportPreview, "rows"> & { rows: MachineImportPreview["rows"] }> {
-  if (file.size > MACHINE_IMPORT_MAX_BYTES) throw new Error("A planilha deve ter no máximo 40 MB.");
+  if (file.size > MACHINE_IMPORT_MAX_BYTES) throw new UserFacingError("A planilha deve ter no máximo 40 MB.");
   if (isCsv(file)) {
     const { parseMachineCsv } = await import("./machine-csv");
     return parseMachineCsv(await file.text(), file.name);
   }
-  if (!isXlsx(file)) throw new Error("Envie um arquivo .xlsx ou .csv da relação de máquinas NR-12.");
+  if (!isXlsx(file)) throw new UserFacingError("Envie um arquivo .xlsx ou .csv da relação de máquinas NR-12.");
   const { parseMachineSpreadsheet } = await import("./machine-spreadsheet");
   return parseMachineSpreadsheet(await file.arrayBuffer());
 }

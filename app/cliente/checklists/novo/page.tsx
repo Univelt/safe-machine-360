@@ -1,7 +1,8 @@
+import { SafeForm } from "@/app/components/safe-form";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthenticatedShell } from "../../../components/authenticated-shell";
-import { createChecklistTemplateAction } from "@/app/actions/records";
+import { createChecklistTemplateAction } from "@/app/actions/safe-records";
 import { requireClient } from "@/lib/auth/guards";
 import { isSuperAdmin } from "@/lib/auth/session";
 import { listCompanies } from "@/lib/data/machines";
@@ -23,7 +24,7 @@ export default async function NewChecklistTemplatePage() {
           </div>
           <Link className="button secondary" href="/cliente/checklists">Voltar</Link>
         </section>
-        <form className="panel record-form" action={createChecklistTemplateAction}>
+        <SafeForm className="panel record-form" action={createChecklistTemplateAction}>
           <label className="full">Nome do checklist<input name="name" required placeholder="Check list preliminar de segurança – NR 12" /></label>
           {isSuperAdmin(session) && (
             <label className="full">Empresa
@@ -39,7 +40,7 @@ export default async function NewChecklistTemplatePage() {
             <ChecklistItemsEditor />
           </div>
           <div className="form-actions"><button className="button primary" type="submit">Salvar checklist</button></div>
-        </form>
+        </SafeForm>
       </div>
     </AuthenticatedShell>
   );

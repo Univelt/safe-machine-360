@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { describeError, formatFriendlyError } from "@/lib/friendly-errors";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Informe um e-mail válido."),
@@ -28,17 +29,21 @@ export function LoginForm() {
   });
 
   async function handleLogin(values: LoginValues) {
+    try {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
     });
-    const payload = await response.json().catch(() => null) as { error?: string; redirectTo?: string } | null;
+    const payload = await response.json().catch(() => null) as { error?: string; errorCode?: string; reference?: string; redirectTo?: string } | null;
     if (!response.ok) {
-      setError("root", { type: "credentials", message: payload?.error ?? "Não foi possível entrar." });
+      setError("root", { type: "credentials", message: `${payload?.error ?? "Não foi possível entrar. Tente novamente em instantes."}${payload?.reference ? ` [${payload.errorCode} · ${payload.reference}]` : ""}` });
       return;
     }
     window.location.assign(payload?.redirectTo ?? "/cliente");
+    } catch (cause) {
+      setError("root", { type: "connection", message: formatFriendlyError(describeError(cause)) });
+    }
   }
 
   return (

@@ -1,8 +1,9 @@
 "use client";
 
+import { SafeForm } from "@/app/components/safe-form";
 import { LoaderCircle, Trash2 } from "lucide-react";
-import { useFormStatus } from "react-dom";
-import { deleteMachineAction } from "@/app/actions/records";
+import { useSafeFormStatus } from "@/app/components/safe-form";
+import { deleteMachineAction } from "@/app/actions/safe-records";
 
 export function MachineDeleteForm({ machine }: { machine: {
   id: string;
@@ -27,16 +28,16 @@ export function MachineDeleteForm({ machine }: { machine: {
   const warning = `Excluir ${machine.name} (${machine.code}) permanentemente?${linkedSummary ? `\n\nTambém serão removidos: ${linkedSummary}.` : ""}\n\nEsta ação não pode ser desfeita.`;
 
   return (
-    <form action={deleteMachineAction} onSubmit={(event) => {
+    <SafeForm action={deleteMachineAction} onSubmit={(event) => {
       if (!window.confirm(warning)) event.preventDefault();
     }}>
       <input type="hidden" name="machineId" value={machine.id} />
       <DeleteButton />
-    </form>
+    </SafeForm>
   );
 }
 
 function DeleteButton() {
-  const { pending } = useFormStatus();
+  const { pending } = useSafeFormStatus();
   return <button className="button danger" type="submit" disabled={pending}>{pending ? <LoaderCircle className="spin" size={16} /> : <Trash2 size={16} />}{pending ? "Excluindo..." : "Excluir máquina"}</button>;
 }

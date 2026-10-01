@@ -1289,3 +1289,11 @@ body { line-height: 1.5; }
   .checklists-page .page-heading-actions { width: 100%; }
   .checklists-page .page-heading-actions .button { width: auto; min-width: 0; flex: 1 1 0; }
 }
+
+/* Shared, readable feedback for failed requests and page loading. */
+.friendly-error-notice { display: flex; align-items: flex-start; gap: 10px; padding: 15px; border: 1px solid #efc2c5; border-radius: 12px; background: #fff6f6; color: #852d37; font-size: 13px; line-height: 1.5; text-align: left; }
+.friendly-error-notice > svg { flex-shrink: 0; margin-top: 2px; }.friendly-error-notice > div { min-width: 0; }.friendly-error-notice strong { font-size: 14px; }.friendly-error-notice p { margin: 5px 0 0; color: inherit; font-size: 13px; }.friendly-error-next-step { font-weight: 500; }
+.friendly-error-reference { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; }.friendly-error-reference small { overflow-wrap: anywhere; font-size: 11px; }.friendly-error-reference .text-button { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; color: inherit; font-size: 12px; }
+.safe-form > .friendly-error-notice, .safe-form-progress { grid-column: 1 / -1; flex-basis: 100%; width: 100%; min-width: 0; }.safe-form-progress { margin: 0; color: var(--muted); font-size: 12px; }.safe-form[aria-busy="true"] button[type="submit"], .safe-form[aria-busy="true"] button:not([type]) { opacity: .6; pointer-events: none; }
+.friendly-error-page { min-height: 65vh; display: flex; align-items: center; justify-content: center; padding: 24px; }.friendly-error-panel { width: min(720px, 100%); padding: 28px; }.friendly-error-panel h1 { margin: 8px 0 20px; font-size: clamp(22px, 4vw, 30px); }.friendly-error-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+@media (max-width: 680px) { .friendly-error-page { padding: 16px; }.friendly-error-panel { padding: 18px; }.friendly-error-actions { flex-direction: column; }.friendly-error-actions .button { width: 100%; }.friendly-error-reference .text-button { min-height: 44px; } }

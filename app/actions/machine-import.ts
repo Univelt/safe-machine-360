@@ -1,5 +1,6 @@
 "use server";
 
+import { UserFacingError } from "@/lib/friendly-errors";
 import type { MachineStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth/guards";
@@ -33,12 +34,12 @@ function text(form: FormData, key: string) {
 
 async function resolveScope(form: FormData) {
   const session = await requireSession();
-  if (!canManageCompany(session)) throw new Error("Somente administradores importam máquinas.");
+  if (!canManageCompany(session)) throw new UserFacingError("Somente administradores importam máquinas.");
   const companyId = isSuperAdmin(session) ? text(form, "companyId") : session.companyId;
-  if (!companyId) throw new Error("Empresa obrigatória.");
+  if (!companyId) throw new UserFacingError("Empresa obrigatória.");
   const unitId = text(form, "unitId");
   const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId } });
-  if (!unit) throw new Error("Unidade inválida para a empresa.");
+  if (!unit) throw new UserFacingError("Unidade inválida para a empresa.");
   return { session, companyId, unitId };
 }
 
@@ -47,12 +48,12 @@ function parsePreviewPayload(value: string): Omit<MachineImportPreview, "rows"> 
   try {
     parsed = JSON.parse(value);
   } catch {
-    throw new Error("Não foi possível ler os dados extraídos da planilha.");
+    throw new UserFacingError("Não foi possível ler os dados extraídos da planilha.");
   }
-  if (!parsed || typeof parsed !== "object") throw new Error("Não foi possível ler os dados extraídos da planilha.");
+  if (!parsed || typeof parsed !== "object") throw new UserFacingError("Não foi possível ler os dados extraídos da planilha.");
   const payload = parsed as Partial<MachineImportPreview>;
   const rows = Array.isArray(payload.rows) ? payload.rows.map(sanitizeMachineImportDraft).filter((row): row is MachineImportDraft => Boolean(row)) : [];
-  if (!rows.length) throw new Error("A planilha não contém máquinas para importar.");
+  if (!rows.length) throw new UserFacingError("A planilha não contém máquinas para importar.");
   return {
     sheetName: String(payload.sheetName ?? "Planilha").trim() || "Planilha",
     mappedColumns: Array.isArray(payload.mappedColumns)
@@ -95,12 +96,12 @@ export async function confirmMachineImportAction(formData: FormData): Promise<Ma
   try {
     payload = JSON.parse(text(formData, "machines"));
   } catch {
-    throw new Error("Não foi possível ler as máquinas selecionadas.");
+    throw new UserFacingError("Não foi possível ler as máquinas selecionadas.");
   }
-  if (!Array.isArray(payload) || !payload.length) throw new Error("Selecione ao menos uma máquina para cadastrar.");
+  if (!Array.isArray(payload) || !payload.length) throw new UserFacingError("Selecione ao menos uma máquina para cadastrar.");
 
   const drafts = payload.map(sanitizeMachineImportDraft).filter((row): row is MachineImportDraft => Boolean(row));
-  if (!drafts.length) throw new Error("Nenhuma máquina válida para cadastrar.");
+  if (!drafts.length) throw new UserFacingError("Nenhuma máquina válida para cadastrar.");
 
   const existing = await prisma.machine.findMany({
     where: { companyId, code: { in: drafts.map((row) => row.code) } },
@@ -120,7 +121,7 @@ export async function confirmMachineImportAction(formData: FormData): Promise<Ma
     toCreate.push(row);
   }
 
-  if (!toCreate.length) throw new Error("Todas as máquinas selecionadas já existem nesta empresa.");
+  if (!toCreate.length) throw new UserFacingError("Todas as máquinas selecionadas já existem nesta empresa.");
 
   await prisma.$transaction(async (tx) => {
     await tx.machine.createMany({

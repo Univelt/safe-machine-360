@@ -1,3 +1,6 @@
+import { apiErrorResponse } from "@/lib/action-errors";
+import { UserFacingError } from "@/lib/friendly-errors";
+import { runSafeRoute } from "@/lib/action-errors";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { canMutateOperations, getSession } from "@/lib/auth/session";
@@ -5,7 +8,7 @@ import { companyFilter } from "@/lib/data/scope";
 import { prisma } from "@/lib/prisma";
 import { assertAllowedActionPlanDocument, deleteStoredFile, formatFileSize, saveActionPlanAttachmentUpload } from "@/lib/storage";
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!canMutateOperations(session)) return NextResponse.json({ error: "Sem permissão para anexar documentos." }, { status: 403 });
@@ -16,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const formData = await request.formData();
     const value = formData.get("file");
-    if (!value || typeof value === "string") throw new Error("Selecione um arquivo.");
+    if (!value || typeof value === "string") throw new UserFacingError("Selecione um arquivo.");
     const file = value as File;
     const format = assertAllowedActionPlanDocument(file);
     const attachment = await prisma.actionPlanAttachment.create({
@@ -41,6 +44,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       throw error;
     }
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível enviar o documento." }, { status: 400 });
+    return apiErrorResponse(error, "action-plan.attachment.upload");
   }
 }
+
+export async function POST(...args: Parameters<typeof handlePOST>) { return runSafeRoute("POST /api/action-plans/[id]/attachments", () => handlePOST(...args)); }

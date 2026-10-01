@@ -1,9 +1,10 @@
+import { runSafeRoute } from "@/lib/action-errors";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/password";
 import { homePathFor, SESSION_COOKIE, SESSION_MAX_AGE, signSession } from "@/lib/auth/session";
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const body = await request.json().catch(() => null) as { email?: string; password?: string; remember?: boolean } | null;
   const email = body?.email?.trim().toLowerCase() ?? "";
   const password = body?.password ?? "";
@@ -45,3 +46,5 @@ export async function POST(request: Request) {
   });
   return response;
 }
+
+export async function POST(...args: Parameters<typeof handlePOST>) { return runSafeRoute("POST /api/auth/login", () => handlePOST(...args)); }

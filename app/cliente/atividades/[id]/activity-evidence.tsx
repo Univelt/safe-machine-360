@@ -1,10 +1,11 @@
 "use client";
 
+import { SafeForm } from "@/app/components/safe-form";
 import { Download, FileText, ImageIcon, LoaderCircle, Plus, X } from "lucide-react";
 import Image from "next/image";
 import { useRef } from "react";
-import { useFormStatus } from "react-dom";
-import { deleteActivityEvidenceAction, uploadActivityEvidenceAction } from "@/app/actions/records";
+import { useSafeFormStatus } from "@/app/components/safe-form";
+import { deleteActivityEvidenceAction, uploadActivityEvidenceAction } from "@/app/actions/safe-records";
 import type { ActivityView } from "@/lib/data/types";
 
 export function ActivityEvidence({ activity, canMutate }: { activity: ActivityView; canMutate: boolean }) {
@@ -27,11 +28,11 @@ export function ActivityEvidence({ activity, canMutate }: { activity: ActivityVi
               <a className="evidence-download" href={`${attachment.url}?download=1`} aria-label={`Baixar ${attachment.name}`}><Download size={14} /></a>
             ) : null}
             {canMutate && (
-              <form action={deleteActivityEvidenceAction}>
+              <SafeForm action={deleteActivityEvidenceAction}>
                 <input type="hidden" name="activityId" value={activity.id} />
                 <input type="hidden" name="attachmentId" value={attachment.id} />
                 <RemoveEvidenceButton />
-              </form>
+              </SafeForm>
             )}
           </article>
         ))}
@@ -45,7 +46,7 @@ export function ActivityEvidence({ activity, canMutate }: { activity: ActivityVi
 function AddEvidenceTile({ activityId }: { activityId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <form className="evidence-add" action={uploadActivityEvidenceAction}>
+    <SafeForm className="evidence-add" action={uploadActivityEvidenceAction}>
       <input type="hidden" name="activityId" value={activityId} />
       <input
         ref={inputRef}
@@ -59,12 +60,12 @@ function AddEvidenceTile({ activityId }: { activityId: string }) {
         }}
       />
       <AddEvidenceButton onPick={() => inputRef.current?.click()} />
-    </form>
+    </SafeForm>
   );
 }
 
 function AddEvidenceButton({ onPick }: { onPick: () => void }) {
-  const { pending } = useFormStatus();
+  const { pending } = useSafeFormStatus();
   return (
     <button type="button" disabled={pending} onClick={onPick} aria-label="Anexar evidência">
       {pending ? <LoaderCircle className="spin" size={22} /> : <Plus size={22} />}
@@ -74,7 +75,7 @@ function AddEvidenceButton({ onPick }: { onPick: () => void }) {
 }
 
 function RemoveEvidenceButton() {
-  const { pending } = useFormStatus();
+  const { pending } = useSafeFormStatus();
   return (
     <button className="photo-remove" type="submit" disabled={pending} aria-label="Remover evidência">
       {pending ? <LoaderCircle className="spin" size={14} /> : <X size={14} />}

@@ -1,9 +1,10 @@
 "use client";
 
+import { describeError, formatFriendlyError, isActionFailure } from "@/lib/friendly-errors";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload } from "lucide-react";
 import { useMemo, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { confirmMachineImportAction, previewMachineImportAction, type MachineImportPreviewResult } from "@/app/actions/machine-import";
+import { confirmMachineImportAction, previewMachineImportAction, type MachineImportPreviewResult } from "@/app/actions/safe-records";
 import { machineImportFieldLabels, type MachineImportDraft } from "@/lib/import/machine-import-map";
 import { parseMachineFile } from "@/lib/import/parse-machine-file";
 import { RiskBadge } from "@/app/components/risk-badge";
@@ -84,6 +85,7 @@ export function MachineImportForm({
         formData.set("unitId", unitId);
         formData.set("parsed", JSON.stringify(parsed));
         const result = await previewMachineImportAction(formData);
+        if (isActionFailure(result)) { setPreview(null); setError(formatFriendlyError(result.error)); return; }
         const initial: Record<number, boolean> = {};
         for (const row of result.rows) {
           initial[row.rowNumber] = !row.existsInCompany && !row.duplicateInFile;
@@ -118,6 +120,7 @@ export function MachineImportForm({
     startTransition(async () => {
       try {
         const result = await confirmMachineImportAction(formData);
+        if (isActionFailure(result)) { setError(formatFriendlyError(result.error)); return; }
         setMessage(`${result.created} máquina(s) cadastrada(s)${result.skipped ? ` · ${result.skipped} ignorada(s)` : ""}.`);
         router.push("/cliente/maquinas");
         router.refresh();
@@ -294,5 +297,7 @@ function importErrorMessage(caught: unknown, fallback = "Não foi possível ler 
   if (/413|too large|entity too large|body exceeded/i.test(message) || (caught instanceof Error && "digest" in caught && String((caught as { digest?: string }).digest).includes("413"))) {
     return "O Amplify recusou o envio por tamanho. Recarregue a página e tente de novo; a planilha agora é lida no navegador.";
   }
-  return message || fallback;
+  const friendly = describeError(caught);
+  if (friendly.code === "FALHA_INESPERADA") friendly.message = fallback;
+  return formatFriendlyError(friendly);
 }

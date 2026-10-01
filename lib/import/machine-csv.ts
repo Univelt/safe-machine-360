@@ -1,3 +1,4 @@
+import { UserFacingError } from "@/lib/friendly-errors";
 import { parseMachineGrid } from "./machine-table";
 import type { MachineImportPreview } from "./machine-import-map";
 
@@ -70,6 +71,6 @@ export function parseCsvToGrid(input: string): string[][] {
 
 export function parseMachineCsv(text: string, fileName = "planilha.csv"): Omit<MachineImportPreview, "rows"> & { rows: MachineImportPreview["rows"] } {
   const grid = parseCsvToGrid(text);
-  if (!grid.length) throw new Error("A planilha está vazia.");
+  if (!grid.length) throw new UserFacingError("A planilha está vazia.");
   return parseMachineGrid(grid, fileName.replace(/\.[^.]+$/, "") || "CSV");
 }

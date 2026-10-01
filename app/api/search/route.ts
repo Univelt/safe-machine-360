@@ -1,9 +1,10 @@
+import { runSafeRoute } from "@/lib/action-errors";
 import { NextResponse } from "next/server";
 import { getSession, isSuperAdmin } from "@/lib/auth/session";
 import { companyFilter } from "@/lib/data/scope";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
 
@@ -75,3 +76,5 @@ export async function GET(request: Request) {
     })),
   });
 }
+
+export async function GET(...args: Parameters<typeof handleGET>) { return runSafeRoute("GET /api/search", () => handleGET(...args)); }

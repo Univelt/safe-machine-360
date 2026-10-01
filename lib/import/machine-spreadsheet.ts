@@ -1,3 +1,4 @@
+import { UserFacingError } from "@/lib/friendly-errors";
 import ExcelJS from "exceljs";
 import { cellToText, type MachineImportPreview } from "./machine-import-map";
 import { parseMachineGrid } from "./machine-table";
@@ -38,6 +39,6 @@ export async function parseMachineSpreadsheet(buffer: Buffer | ArrayBuffer | Uin
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
   const sheet = workbook.worksheets.find((candidate) => candidate.rowCount > 0) ?? workbook.worksheets[0];
-  if (!sheet) throw new Error("A planilha está vazia.");
+  if (!sheet) throw new UserFacingError("A planilha está vazia.");
   return parseMachineGrid(worksheetToGrid(sheet), sheet.name);
 }

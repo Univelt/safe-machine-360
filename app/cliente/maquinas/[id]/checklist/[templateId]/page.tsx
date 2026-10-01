@@ -1,9 +1,10 @@
+import { SafeForm } from "@/app/components/safe-form";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, ClipboardCheck } from "lucide-react";
 import { AuthenticatedShell } from "../../../../../components/authenticated-shell";
-import { createChecklistAction } from "@/app/actions/records";
+import { createChecklistAction } from "@/app/actions/safe-records";
 import { requireClient } from "@/lib/auth/guards";
 import { getMachine } from "@/lib/data/machines";
 import { getChecklistTemplate } from "@/lib/data/checklists";
@@ -42,7 +43,7 @@ export default async function FillChecklistPage({ params }: { params: Promise<{ 
             <Link className="button secondary" href={`/cliente/maquinas/${machine.id}/checklist`}>Trocar checklist</Link>
           </div>
         </section>
-        <form className="panel checklist-items-panel" action={createChecklistAction}>
+        <SafeForm className="panel checklist-items-panel" action={createChecklistAction}>
           <input type="hidden" name="machineId" value={machine.id} />
           <input type="hidden" name="templateId" value={template.id} />
           <div className="panel-header">
@@ -76,7 +77,7 @@ export default async function FillChecklistPage({ params }: { params: Promise<{ 
           <div className="form-actions checklist-fill-actions">
             <button className="button primary" type="submit">Registrar checklist</button>
           </div>
-        </form>
+        </SafeForm>
       </div>
     </AuthenticatedShell>
   );

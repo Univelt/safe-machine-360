@@ -1,8 +1,9 @@
+import { runSafeRoute } from "@/lib/action-errors";
 import { NextResponse } from "next/server";
 import { getSession, COMPANY_CONTEXT_COOKIE, isSuperAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const session = await getSession();
   if (!session || !isSuperAdmin(session)) {
     return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 });
@@ -31,3 +32,5 @@ export async function POST(request: Request) {
   });
   return response;
 }
+
+export async function POST(...args: Parameters<typeof handlePOST>) { return runSafeRoute("POST /api/context", () => handlePOST(...args)); }

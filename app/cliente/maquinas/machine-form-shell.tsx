@@ -1,7 +1,9 @@
 "use client";
 
+import { describeError, formatFriendlyError, isActionFailure, type FormActionResult } from "@/lib/friendly-errors";
+import { SafeForm } from "@/app/components/safe-form";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
-import { checkMachineCodeAction } from "@/app/actions/records";
+import { checkMachineCodeAction } from "@/app/actions/safe-records";
 
 const duplicateCodeMessage = "Este código já está cadastrado em outra máquina desta empresa. Informe um código exclusivo para continuar.";
 
@@ -13,7 +15,7 @@ export function MachineFormShell({
   initialError,
   submitLabel,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => FormActionResult | Promise<FormActionResult>;
   children: ReactNode;
   machineId?: string;
   initialCode?: string;
@@ -48,6 +50,10 @@ export function MachineFormShell({
 
     try {
       const result = await checkMachineCodeAction({ machineId, companyId, code });
+      if (isActionFailure(result)) {
+        setError(formatFriendlyError(result.error));
+        return;
+      }
       if (!result.available) {
         const message = result.message ?? duplicateCodeMessage;
         setError(message);
@@ -66,8 +72,8 @@ export function MachineFormShell({
       }
       validatedSignature.current = signature;
       form.requestSubmit();
-    } catch {
-      setError("Não foi possível validar o código agora. Seus dados foram mantidos; tente salvar novamente.");
+    } catch (cause) {
+      setError(formatFriendlyError(describeError(cause)));
     } finally {
       checking.current = false;
       setIsChecking(false);
@@ -85,7 +91,7 @@ export function MachineFormShell({
   }
 
   return (
-    <form className="panel record-form" action={action} onSubmit={validateCodeBeforeSubmit} onChange={clearCodeError}>
+    <SafeForm className="panel record-form" action={action} onSubmit={validateCodeBeforeSubmit} onChange={clearCodeError}>
       {error && <p className="full machine-code-error" role="alert">{error}</p>}
       {children}
       <div className="form-actions">
@@ -93,6 +99,6 @@ export function MachineFormShell({
           {isChecking ? "Verificando código…" : submitLabel}
         </button>
       </div>
-    </form>
+    </SafeForm>
   );
 }

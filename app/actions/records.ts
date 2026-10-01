@@ -1,5 +1,8 @@
 "use server";
 
+import { formatFriendlyError } from "@/lib/friendly-errors";
+import { reportServerError } from "@/lib/action-errors";
+import { UserFacingError } from "@/lib/friendly-errors";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActivityPriority, ActivityStatus, AuditOperation, DocumentKind, MachineStatus, RiskLevel, SafetyCategory, UserRole } from "@prisma/client";
@@ -89,10 +92,10 @@ export async function createCompanyAction(formData: FormData) {
 
 export async function createUserAction(formData: FormData) {
   const session = await requireSession();
-  if (!canManageCompany(session)) throw new Error("Sem permissão para cadastrar usuários.");
+  if (!canManageCompany(session)) throw new UserFacingError("Sem permissão para cadastrar usuários.");
   const role = text(formData, "role") as UserRole;
   const companyId = isSuperAdmin(session) ? optional(formData, "companyId") : session.companyId;
-  if (role !== "SUPER_ADMIN" && !companyId) throw new Error("Usuário cliente precisa de uma empresa.");
+  if (role !== "SUPER_ADMIN" && !companyId) throw new UserFacingError("Usuário cliente precisa de uma empresa.");
   const user = await prisma.user.create({
     data: {
       name: text(formData, "name"),
@@ -111,12 +114,12 @@ export async function createUserAction(formData: FormData) {
 
 export async function createMachineAction(formData: FormData) {
   const session = await requireSession();
-  if (!canManageCompany(session)) throw new Error("Somente administradores cadastram máquinas.");
+  if (!canManageCompany(session)) throw new UserFacingError("Somente administradores cadastram máquinas.");
   const companyId = isSuperAdmin(session) ? text(formData, "companyId") : session.companyId;
-  if (!companyId) throw new Error("Empresa obrigatória.");
+  if (!companyId) throw new UserFacingError("Empresa obrigatória.");
   const unitId = text(formData, "unitId");
   const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId } });
-  if (!unit) throw new Error("Unidade inválida para a empresa.");
+  if (!unit) throw new UserFacingError("Unidade inválida para a empresa.");
   let machine;
   try {
     machine = await prisma.machine.create({
@@ -127,7 +130,7 @@ export async function createMachineAction(formData: FormData) {
       },
     });
   } catch (error) {
-    if (isMachineCodeUniqueConflict(error)) redirect("/cliente/maquinas/nova?erro=codigo-duplicado");
+    if (isMachineCodeUniqueConflict(error)) throw new UserFacingError("Outra máquina desta empresa já utiliza esse código. Informe um código exclusivo.", "CODIGO_MAQUINA_DUPLICADO");
     throw error;
   }
   await writeAudit(companyId, session.id, "MACHINE_CREATED", "Machine", machine.id, `Máquina ${machine.code} cadastrada.`);
@@ -176,8 +179,8 @@ function machineFields(formData: FormData) {
   const rawHrnResidual = optional(formData, "hrnResidual");
   const hrnCurrent = riskOrigin === "MANUAL" ? rawHrnCurrent : (normalizeHrnValue(rawHrnCurrent) ?? "");
   const hrnResidual = riskOrigin === "MANUAL" || rawHrnResidual === null ? rawHrnResidual : normalizeHrnValue(rawHrnResidual);
-  if (riskOrigin === "AUTOMATIC" && !hrnCurrent) throw new Error("Informe um HRN atual válido.");
-  if (riskOrigin === "AUTOMATIC" && rawHrnResidual !== null && hrnResidual === null) throw new Error("Informe um HRN residual válido.");
+  if (riskOrigin === "AUTOMATIC" && !hrnCurrent) throw new UserFacingError("Informe um HRN atual válido.");
+  if (riskOrigin === "AUTOMATIC" && rawHrnResidual !== null && hrnResidual === null) throw new UserFacingError("Informe um HRN residual válido.");
   const resolvedRisk = resolveMachineRisk({ origin: riskOrigin, manualRiskLevel: optional(formData, "manualRiskLevel") as RiskLevel | null, hrnCurrent, hrnResidual });
   return {
     code: text(formData, "code"),
@@ -216,22 +219,22 @@ function machineFields(formData: FormData) {
 
 export async function updateMachineAction(formData: FormData) {
   const session = await requireSession();
-  if (!canManageCompany(session)) throw new Error("Sem permissão para editar máquinas.");
+  if (!canManageCompany(session)) throw new UserFacingError("Sem permissão para editar máquinas.");
   const machineId = text(formData, "machineId");
   const machine = await prisma.machine.findFirst({
     where: { id: machineId, ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
     select: { id: true, companyId: true },
   });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const unitId = text(formData, "unitId");
   const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId: machine.companyId }, select: { id: true } });
-  if (!unit) throw new Error("Unidade inválida para a empresa da máquina.");
+  if (!unit) throw new UserFacingError("Unidade inválida para a empresa da máquina.");
 
   let updated;
   try {
     updated = await prisma.machine.update({ where: { id: machine.id }, data: { ...machineFields(formData), unitId } });
   } catch (error) {
-    if (isMachineCodeUniqueConflict(error)) redirect(`/cliente/maquinas/${machine.id}/editar?erro=codigo-duplicado`);
+    if (isMachineCodeUniqueConflict(error)) throw new UserFacingError("Outra máquina desta empresa já utiliza esse código. Informe um código exclusivo.", "CODIGO_MAQUINA_DUPLICADO");
     throw error;
   }
   await writeAudit(machine.companyId, session.id, "MACHINE_UPDATED", "Machine", machine.id, `Dados da máquina ${updated.code} atualizados.`);
@@ -243,7 +246,7 @@ export async function updateMachineAction(formData: FormData) {
 
 export async function deleteMachineAction(formData: FormData) {
   const session = await requireSession();
-  if (!canManageCompany(session)) throw new Error("Sem permissão para excluir máquinas.");
+  if (!canManageCompany(session)) throw new UserFacingError("Sem permissão para excluir máquinas.");
   const machine = await prisma.machine.findFirst({
     where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
     include: {
@@ -253,7 +256,7 @@ export async function deleteMachineAction(formData: FormData) {
       activities: { include: { attachments: { select: { url: true } } } },
     },
   });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
 
   const storedFiles = [
     ...machine.photos.map((photo) => photo.url),
@@ -286,16 +289,16 @@ export async function deleteMachineAction(formData: FormData) {
 
 export async function uploadMachinePhotoAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machine = await prisma.machine.findFirst({
     where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
   });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const file = getUploadedFile(formData, "file");
-  if (!file) throw new Error("Selecione uma foto.");
+  if (!file) throw new UserFacingError("Selecione uma foto.");
   assertAllowedImage(file);
   const caption = text(formData, "caption");
-  if (!caption) throw new Error("Informe o nome da foto.");
+  if (!caption) throw new UserFacingError("Informe o nome da foto.");
   const photo = await prisma.machinePhoto.create({
     data: {
       machineId: machine.id,
@@ -318,7 +321,7 @@ export async function uploadMachinePhotoAction(formData: FormData) {
 
 export async function deleteMachinePhotoAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machineId = text(formData, "machineId");
   const photo = await prisma.machinePhoto.findFirst({
     where: {
@@ -328,7 +331,7 @@ export async function deleteMachinePhotoAction(formData: FormData) {
     },
     include: { machine: { select: { companyId: true, code: true } } },
   });
-  if (!photo) throw new Error("Foto não encontrada.");
+  if (!photo) throw new UserFacingError("Foto não encontrada.");
   if (photo.url) await deleteStoredFile(photo.url);
   await prisma.machinePhoto.delete({ where: { id: photo.id } });
   await writeAudit(photo.machine.companyId, session.id, "MACHINE_PHOTO_DELETED", "MachinePhoto", photo.id, `Foto "${photo.caption}" removida de ${photo.machine.code}.`, { parentId: machineId });
@@ -338,7 +341,7 @@ export async function deleteMachinePhotoAction(formData: FormData) {
 
 export async function updateMachinePhotoAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machineId = text(formData, "machineId");
   const photo = await prisma.machinePhoto.findFirst({
     where: {
@@ -348,9 +351,9 @@ export async function updateMachinePhotoAction(formData: FormData) {
     },
     include: { machine: { select: { companyId: true, code: true } } },
   });
-  if (!photo) throw new Error("Foto não encontrada.");
+  if (!photo) throw new UserFacingError("Foto não encontrada.");
   const caption = text(formData, "caption");
-  if (!caption) throw new Error("Informe o nome da foto.");
+  if (!caption) throw new UserFacingError("Informe o nome da foto.");
   await prisma.machinePhoto.update({
     where: { id: photo.id },
     data: { caption, observation: optional(formData, "observation"), takenAt: dateValue(formData, "takenAt"), compliant: checked(formData, "compliant") },
@@ -362,9 +365,9 @@ export async function updateMachinePhotoAction(formData: FormData) {
 
 export async function createDocumentAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const file = getUploadedFile(formData, "file");
   if (file) assertAllowedUpload(file);
   const expiration = optional(formData, "expirationDate");
@@ -396,18 +399,18 @@ export async function createDocumentAction(formData: FormData) {
 
 export async function createActivityAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const title = text(formData, "title").trim();
   const responsible = text(formData, "responsible").trim();
   const description = text(formData, "description").trim();
   const dueDateValue = text(formData, "dueDate");
   if (!title || !responsible || !description || !dueDateValue) {
-    throw new Error("Preencha máquina, título, responsável, data prevista e descrição.");
+    throw new UserFacingError("Preencha máquina, título, responsável, data prevista e descrição.");
   }
   const dueDate = new Date(dueDateValue);
-  if (Number.isNaN(dueDate.getTime())) throw new Error("Data prevista inválida.");
+  if (Number.isNaN(dueDate.getTime())) throw new UserFacingError("Data prevista inválida.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const activity = await prisma.activity.create({
     data: {
       companyId: machine.companyId,
@@ -454,11 +457,11 @@ function progressStatus(progress: number, dueDate: Date): ActivityStatus {
 
 export async function updateActivityProgressAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const activity = await prisma.activity.findFirst({
     where: { id: text(formData, "activityId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
   });
-  if (!activity) throw new Error("Atividade não encontrada.");
+  if (!activity) throw new UserFacingError("Atividade não encontrada.");
   const progress = Math.min(100, Math.max(0, Math.round(numberValue(formData, "progress"))));
   const status = progressStatus(progress, activity.dueDate);
   await prisma.activity.update({
@@ -476,13 +479,13 @@ export async function updateActivityProgressAction(formData: FormData) {
 
 export async function uploadActivityEvidenceAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const activity = await prisma.activity.findFirst({
     where: { id: text(formData, "activityId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
   });
-  if (!activity) throw new Error("Atividade não encontrada.");
+  if (!activity) throw new UserFacingError("Atividade não encontrada.");
   const count = await saveActivityFiles(activity.id, activity.companyId, formData);
-  if (!count) throw new Error("Selecione um arquivo.");
+  if (!count) throw new UserFacingError("Selecione um arquivo.");
   await writeAudit(activity.companyId, session.id, "ACTIVITY_EVIDENCE_UPLOADED", "Activity", activity.id, `${count} evidência(s) anexada(s) a ${activity.title}.`);
   revalidatePath("/cliente/atividades");
   revalidatePath(`/cliente/atividades/${activity.id}`);
@@ -490,7 +493,7 @@ export async function uploadActivityEvidenceAction(formData: FormData) {
 
 export async function deleteActivityEvidenceAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const activityId = text(formData, "activityId");
   const attachment = await prisma.activityAttachment.findFirst({
     where: {
@@ -500,7 +503,7 @@ export async function deleteActivityEvidenceAction(formData: FormData) {
     },
     include: { activity: { select: { companyId: true, title: true } } },
   });
-  if (!attachment) throw new Error("Evidência não encontrada.");
+  if (!attachment) throw new UserFacingError("Evidência não encontrada.");
   if (attachment.url) await deleteStoredFile(attachment.url);
   await prisma.activityAttachment.delete({ where: { id: attachment.id } });
   await writeAudit(attachment.activity.companyId, session.id, "ACTIVITY_EVIDENCE_DELETED", "ActivityAttachment", attachment.id, `Evidência removida de ${attachment.activity.title}.`);
@@ -510,14 +513,14 @@ export async function deleteActivityEvidenceAction(formData: FormData) {
 
 export async function createRiskAssessmentAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const hrnCurrent = text(formData, "hrnCurrent");
   const hrnResidual = optional(formData, "hrnResidual");
   const parsedCurrent = parseHrnValue(hrnCurrent);
   const parsedResidual = parseHrnValue(hrnResidual);
-  if (parsedCurrent === null || parsedResidual === null) throw new Error("Informe valores HRN válidos, usando apenas números inteiros ou decimais.");
+  if (parsedCurrent === null || parsedResidual === null) throw new UserFacingError("Informe valores HRN válidos, usando apenas números inteiros ou decimais.");
   const assessment = await prisma.riskAssessment.create({
     data: {
       companyId: machine.companyId,
@@ -551,9 +554,9 @@ export async function createRiskAssessmentAction(formData: FormData) {
 
 export async function createChecklistTemplateAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const descriptions = formData.getAll("itemDescription").map((value) => String(value).trim()).filter(Boolean);
-  if (!descriptions.length) throw new Error("Inclua pelo menos um item no checklist.");
+  if (!descriptions.length) throw new UserFacingError("Inclua pelo menos um item no checklist.");
   const companyId = isSuperAdmin(session)
     ? optional(formData, "companyId")
     : session.companyId;
@@ -574,10 +577,10 @@ export async function createChecklistTemplateAction(formData: FormData) {
 
 export async function addChecklistItemAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const templateId = text(formData, "templateId");
   const description = text(formData, "description");
-  if (!description) throw new Error("Informe a descrição do item.");
+  if (!description) throw new UserFacingError("Informe a descrição do item.");
   const template = await prisma.checklistTemplate.findFirst({
     where: {
       id: templateId,
@@ -586,7 +589,7 @@ export async function addChecklistItemAction(formData: FormData) {
     },
     include: { items: true },
   });
-  if (!template) throw new Error("Checklist não encontrado.");
+  if (!template) throw new UserFacingError("Checklist não encontrado.");
   assertChecklistOwnership(session, template.companyId);
   const nextNumber = template.items.reduce((max, item) => Math.max(max, item.number), 0) + 1;
   const [item] = await prisma.$transaction([
@@ -606,13 +609,13 @@ export async function addChecklistItemAction(formData: FormData) {
 export type ChecklistMutationState = { ok: boolean; message: string };
 
 function mutationError(error: unknown) {
-  return error instanceof Error ? error.message : "Não foi possível concluir a alteração.";
+  return formatFriendlyError(reportServerError(error, "checklist.mutate"));
 }
 
 function assertChecklistOwnership(session: Awaited<ReturnType<typeof requireSession>>, companyId: string | null) {
   if (!canManageChecklistTemplate(session, companyId)) {
-    if (!companyId && !isSuperAdmin(session)) throw new Error("Somente a Univelt pode alterar um modelo global.");
-    throw new Error("Sem permissão para alterar checklists.");
+    if (!companyId && !isSuperAdmin(session)) throw new UserFacingError("Somente a Univelt pode alterar um modelo global.");
+    throw new UserFacingError("Sem permissão para alterar checklists.");
   }
 }
 
@@ -620,10 +623,10 @@ export async function updateChecklistTemplateAction(_state: ChecklistMutationSta
   try {
     const session = await requireSession();
     const template = await prisma.checklistTemplate.findUnique({ where: { id: text(formData, "templateId") } });
-    if (!template) throw new Error("Checklist não encontrado.");
+    if (!template) throw new UserFacingError("Checklist não encontrado.");
     assertChecklistOwnership(session, template.companyId);
     const name = text(formData, "name");
-    if (!name) throw new Error("Informe o nome do checklist.");
+    if (!name) throw new UserFacingError("Informe o nome do checklist.");
     await prisma.checklistTemplate.update({ where: { id: template.id }, data: { name, description: optional(formData, "description") } });
     await writeAudit(template.companyId, session.id, "CHECKLIST_TEMPLATE_UPDATED", "ChecklistTemplate", template.id, `Checklist ${name} atualizado.`, { operation: "UPDATE" });
     revalidatePath("/cliente/checklists");
@@ -641,7 +644,7 @@ export async function setChecklistTemplateActiveAction(_state: ChecklistMutation
       where: { id: text(formData, "templateId") },
       include: { _count: { select: { executions: true } }, items: { select: { _count: { select: { answers: true } } } } },
     });
-    if (!template) throw new Error("Checklist não encontrado.");
+    if (!template) throw new UserFacingError("Checklist não encontrado.");
     assertChecklistOwnership(session, template.companyId);
     const restore = text(formData, "intent") === "restore";
     if (restore) {
@@ -677,10 +680,10 @@ export async function updateChecklistItemAction(_state: ChecklistMutationState, 
   try {
     const session = await requireSession();
     const item = await prisma.checklistTemplateItem.findUnique({ where: { id: text(formData, "itemId") }, include: { template: true } });
-    if (!item) throw new Error("Item não encontrado.");
+    if (!item) throw new UserFacingError("Item não encontrado.");
     assertChecklistOwnership(session, item.template.companyId);
     const description = text(formData, "description");
-    if (!description) throw new Error("Informe a descrição do item.");
+    if (!description) throw new UserFacingError("Informe a descrição do item.");
     await prisma.checklistTemplateItem.update({ where: { id: item.id }, data: { description } });
     await prisma.checklistTemplate.update({ where: { id: item.templateId }, data: { updatedAt: new Date() } });
     await writeAudit(item.template.companyId, session.id, "CHECKLIST_ITEM_UPDATED", "ChecklistTemplateItem", item.id, `Item ${item.number} de ${item.template.name} atualizado.`, { operation: "UPDATE", parentId: item.templateId });
@@ -698,7 +701,7 @@ export async function setChecklistItemActiveAction(_state: ChecklistMutationStat
       where: { id: text(formData, "itemId") },
       include: { template: true, _count: { select: { answers: true } } },
     });
-    if (!item) throw new Error("Item não encontrado.");
+    if (!item) throw new UserFacingError("Item não encontrado.");
     assertChecklistOwnership(session, item.template.companyId);
     const restore = text(formData, "intent") === "restore";
     if (restore) {
@@ -727,9 +730,9 @@ export async function setChecklistItemActiveAction(_state: ChecklistMutationStat
 
 export async function createChecklistAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const template = await prisma.checklistTemplate.findFirst({
     where: {
       id: text(formData, "templateId"),
@@ -738,8 +741,8 @@ export async function createChecklistAction(formData: FormData) {
     },
     include: { items: { where: { isActive: true }, orderBy: { number: "asc" } } },
   });
-  if (!template) throw new Error("Modelo de checklist não encontrado.");
-  if (!template.items.length) throw new Error("Este checklist ainda não tem itens cadastrados.");
+  if (!template) throw new UserFacingError("Modelo de checklist não encontrado.");
+  if (!template.items.length) throw new UserFacingError("Este checklist ainda não tem itens cadastrados.");
   const execution = await prisma.checklistExecution.create({
     data: {
       companyId: machine.companyId,
@@ -762,13 +765,13 @@ export async function createChecklistAction(formData: FormData) {
 
 export async function createActionPlanAction(formData: FormData) {
   const session = await requireSession();
-  if (!canMutateOperations(session)) throw new Error("Sem permissão.");
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
-  if (!machine) throw new Error("Máquina não encontrada.");
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const checklistExecutionId = optional(formData, "checklistExecutionId");
   if (checklistExecutionId) {
     const execution = await prisma.checklistExecution.findFirst({ where: { id: checklistExecutionId, machineId: machine.id, companyId: machine.companyId }, select: { id: true } });
-    if (!execution) throw new Error("O preenchimento de checklist selecionado não pertence a esta máquina.");
+    if (!execution) throw new UserFacingError("O preenchimento de checklist selecionado não pertence a esta máquina.");
   }
   const files = getUploadedFiles(formData, "attachments");
   files.forEach(assertAllowedActionPlanDocument);

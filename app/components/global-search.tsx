@@ -3,6 +3,7 @@
 import { Building2, LoaderCircle, Search, UserRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { describeError, formatApiError, formatFriendlyError, UserFacingError } from "@/lib/friendly-errors";
 
 type SearchItem = { id: string; label: string; meta: string; href: string };
 type SearchPayload = { machines: SearchItem[]; companies: SearchItem[]; users: SearchItem[] };
@@ -13,6 +14,7 @@ export function GlobalSearch({ isClient }: { isClient: boolean }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchPayload>(EMPTY_RESULTS);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -53,11 +55,14 @@ export function GlobalSearch({ isClient }: { isClient: boolean }) {
       setStatus("loading");
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(value)}`, { signal: controller.signal });
-        if (!response.ok) throw new Error("Falha na busca");
+        if (!response.ok) throw new UserFacingError(formatApiError(await response.json().catch(() => null), "Não foi possível concluir a busca. Tente novamente."));
         setResults(await response.json() as SearchPayload);
         setStatus("ready");
       } catch (cause) {
-        if ((cause as Error).name !== "AbortError") setStatus("error");
+        if ((cause as Error).name !== "AbortError") {
+          setError(cause instanceof UserFacingError ? cause.message : formatFriendlyError(describeError(cause)));
+          setStatus("error");
+        }
       }
     }, 250);
     return () => {
@@ -103,7 +108,7 @@ export function GlobalSearch({ isClient }: { isClient: boolean }) {
         <div id="global-search-results" className="search-results" role="listbox">
           {query.trim().length < 2 && <p className="search-hint">Digite pelo menos 2 caracteres para buscar.</p>}
           {status === "loading" && <p className="search-hint">Buscando no portal…</p>}
-          {status === "error" && <p className="search-error" role="alert">Não foi possível concluir a busca. Tente novamente.</p>}
+          {status === "error" && <p className="search-error" role="alert">{error}</p>}
           {status === "ready" && !hasResults && <p className="search-hint">Nenhum resultado encontrado para “{query.trim()}”.</p>}
           {groups.map((group) => {
             const Icon = group.icon;

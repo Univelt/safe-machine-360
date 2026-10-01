@@ -1,10 +1,11 @@
 "use client";
 
+import { SafeForm } from "@/app/components/safe-form";
 import { Check, Expand, LoaderCircle, Pencil, Plus, Save, ShieldAlert, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useRef } from "react";
-import { useFormStatus } from "react-dom";
-import { deleteMachinePhotoAction, updateMachinePhotoAction, uploadMachinePhotoAction } from "@/app/actions/records";
+import { useSafeFormStatus } from "@/app/components/safe-form";
+import { deleteMachinePhotoAction, updateMachinePhotoAction, uploadMachinePhotoAction } from "@/app/actions/safe-records";
 import { ChangeLog } from "../../../components/change-log";
 import type { MachineView } from "@/lib/data/types";
 import { formatDate } from "@/lib/labels";
@@ -38,13 +39,13 @@ export function MachinePhotos({ machine, canMutate }: { machine: MachineView; ca
             {canMutate && (
               <div className="photo-card-actions">
                 <EditPhotoModal machineId={machine.id} photo={photo} />
-                <form action={deleteMachinePhotoAction} onSubmit={(event) => {
+                <SafeForm action={deleteMachinePhotoAction} onSubmit={(event) => {
                   if (!window.confirm(`Remover esta foto de ${machine.name}? Esta ação não pode ser desfeita.`)) event.preventDefault();
                 }}>
                   <input type="hidden" name="machineId" value={machine.id} />
                   <input type="hidden" name="photoId" value={photo.id} />
                   <RemovePhotoButton machineName={machine.name} />
-                </form>
+                </SafeForm>
               </div>
             )}
           </article>
@@ -117,7 +118,7 @@ function EditPhotoModal({ machineId, photo }: { machineId: string; photo: Machin
             <div><span className="panel-kicker">Registro visual</span><h3 id={titleId}>Editar foto</h3></div>
             <button className="icon-button" type="button" onClick={close} aria-label="Fechar"><X size={18} /></button>
           </header>
-          <form className="photo-modal-form" action={updateMachinePhotoAction}>
+          <SafeForm className="photo-modal-form" action={updateMachinePhotoAction}>
             <input type="hidden" name="machineId" value={machineId} />
             <input type="hidden" name="photoId" value={photo.id} />
             <label>Nome da foto<input name="caption" type="text" required defaultValue={photo.caption} autoFocus /></label>
@@ -131,7 +132,7 @@ function EditPhotoModal({ machineId, photo }: { machineId: string; photo: Machin
               <button className="button secondary" type="button" onClick={close}>Cancelar</button>
               <SavePhotoChangesButton />
             </div>
-          </form>
+          </SafeForm>
         </div>
       </dialog>
     </>
@@ -168,7 +169,7 @@ function AddPhotoModal({ machineId }: { machineId: string }) {
               <X size={18} />
             </button>
           </header>
-          <form className="photo-modal-form" action={uploadMachinePhotoAction}>
+          <SafeForm className="photo-modal-form" action={uploadMachinePhotoAction}>
             <input type="hidden" name="machineId" value={machineId} />
             <label>Nome da foto<input name="caption" type="text" required placeholder="Foto frontal" autoFocus /></label>
             <label>Observação<textarea name="observation" rows={4} maxLength={2000} placeholder="Descreva o que esta imagem registra ou um detalhe importante." /></label>
@@ -182,7 +183,7 @@ function AddPhotoModal({ machineId }: { machineId: string }) {
               <button className="button secondary" type="button" onClick={close}>Cancelar</button>
               <SavePhotoButton />
             </div>
-          </form>
+          </SafeForm>
         </div>
       </dialog>
     </>
@@ -190,7 +191,7 @@ function AddPhotoModal({ machineId }: { machineId: string }) {
 }
 
 function SavePhotoButton() {
-  const { pending } = useFormStatus();
+  const { pending } = useSafeFormStatus();
   return (
     <button className="button primary" type="submit" disabled={pending}>
       {pending ? <LoaderCircle className="spin" size={18} /> : <Plus size={18} />}
@@ -200,7 +201,7 @@ function SavePhotoButton() {
 }
 
 function SavePhotoChangesButton() {
-  const { pending } = useFormStatus();
+  const { pending } = useSafeFormStatus();
   return (
     <button className="button primary" type="submit" disabled={pending}>
       {pending ? <LoaderCircle className="spin" size={18} /> : <Save size={18} />}
@@ -210,7 +211,7 @@ function SavePhotoChangesButton() {
 }
 
 function RemovePhotoButton({ machineName }: { machineName: string }) {
-  const { pending } = useFormStatus();
+  const { pending } = useSafeFormStatus();
   return (
     <button className="photo-remove" type="submit" disabled={pending} aria-label={`Remover foto de ${machineName}`}>
       {pending ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}

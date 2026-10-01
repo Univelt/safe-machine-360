@@ -1,3 +1,4 @@
+import { UserFacingError } from "@/lib/friendly-errors";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -69,31 +70,31 @@ const ACTION_PLAN_DOCUMENT_FORMATS = new Set(["PDF", "DOC", "DOCX"]);
 
 export function assertAllowedUpload(file: File) {
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("O anexo deve ter no máximo 20 MB.");
+    throw new UserFacingError("O anexo deve ter no máximo 20 MB.");
   }
   if (!detectFormat(file)) {
-    throw new Error("Anexe PDF, imagem, Word ou Excel.");
+    throw new UserFacingError("Anexe PDF, imagem, Word ou Excel.");
   }
 }
 
 export function assertAllowedImage(file: File) {
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("A foto deve ter no máximo 20 MB.");
+    throw new UserFacingError("A foto deve ter no máximo 20 MB.");
   }
   const format = detectFormat(file);
   if (!format || !IMAGE_FORMATS.has(format)) {
-    throw new Error("Anexe uma imagem JPG, PNG ou WEBP.");
+    throw new UserFacingError("Anexe uma imagem JPG, PNG ou WEBP.");
   }
 }
 
 export function assertAllowedActionPlanDocument(file: File) {
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("O anexo deve ter no máximo 20 MB.");
+    throw new UserFacingError("O anexo deve ter no máximo 20 MB.");
   }
   const extensionFormat = FORMAT_BY_EXTENSION[extensionOf(file.name)];
   const mimeFormat = FORMAT_BY_MIME[file.type];
   if (!extensionFormat || !mimeFormat || extensionFormat !== mimeFormat || !ACTION_PLAN_DOCUMENT_FORMATS.has(extensionFormat)) {
-    throw new Error("Anexe um arquivo PDF, DOC ou DOCX válido.");
+    throw new UserFacingError("Anexe um arquivo PDF, DOC ou DOCX válido.");
   }
   return extensionFormat;
 }

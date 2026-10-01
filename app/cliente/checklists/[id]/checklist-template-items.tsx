@@ -1,9 +1,11 @@
 "use client";
 
+import { SafeForm } from "@/app/components/safe-form";
 import { AlertTriangle, ChevronDown, MoreVertical, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addChecklistItemAction, setChecklistItemActiveAction, updateChecklistItemAction, type ChecklistMutationState } from "@/app/actions/records";
+import { setChecklistItemActiveAction, updateChecklistItemAction, type ChecklistMutationState } from "@/app/actions/records";
+import { addChecklistItemAction } from "@/app/actions/safe-records";
 
 type ChecklistItem = { id: string; number: number; description: string; isActive: boolean; _count: { answers: number } };
 
@@ -17,14 +19,14 @@ export function ChecklistTemplateItems({ templateId, items, canEdit }: { templat
   return (
     <>
       {canEdit && (
-        <form className="checklist-add-item checklist-add-item-top" action={addChecklistItemAction}>
+        <SafeForm className="checklist-add-item checklist-add-item-top" action={addChecklistItemAction}>
           <input type="hidden" name="templateId" value={templateId} />
           <label>
             Novo item
             <textarea name="description" rows={2} required placeholder="Descrição do item de verificação" />
           </label>
           <button className="button primary" type="submit"><Plus size={16} /> Adicionar item</button>
-        </form>
+        </SafeForm>
       )}
 
       <div className="checklist-toolbar">

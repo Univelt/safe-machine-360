@@ -3,6 +3,7 @@
 import { Building2, ChevronDown, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { describeError, formatApiError, formatFriendlyError, UserFacingError } from "@/lib/friendly-errors";
 
 type CompanyOption = { id: string; name: string };
 
@@ -26,11 +27,11 @@ export function CompanyContextSelector({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyId: companyId || null }),
       });
-      const payload = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(payload?.error ?? "Não foi possível alterar o contexto.");
+      const payload = await response.json().catch(() => null) as { error?: string; reference?: string; errorCode?: string } | null;
+      if (!response.ok) throw new UserFacingError(formatApiError(payload, "Não foi possível selecionar a empresa. Tente novamente."));
       router.refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível alterar o contexto.");
+      setError(cause instanceof UserFacingError ? cause.message : formatFriendlyError(describeError(cause)));
     } finally {
       setPending(false);
     }

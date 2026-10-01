@@ -3,6 +3,7 @@
 import { ChevronRight, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { describeError, formatApiError, formatFriendlyError, UserFacingError } from "@/lib/friendly-errors";
 
 export function CompanyContextLink({ companyId, companyName }: { companyId: string; companyName: string }) {
   const router = useRouter();
@@ -18,11 +19,14 @@ export function CompanyContextLink({ companyId, companyName }: { companyId: stri
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyId }),
       });
-      if (!response.ok) throw new Error("Falha ao selecionar empresa");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new UserFacingError(formatApiError(payload, "Não foi possível abrir a empresa. Tente novamente."));
+      }
       router.push("/admin/maquinas");
       router.refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível abrir a empresa.");
+      setError(cause instanceof UserFacingError ? cause.message : formatFriendlyError(describeError(cause)));
     } finally {
       setPending(false);
     }
