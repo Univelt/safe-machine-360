@@ -117,17 +117,56 @@ export async function createMachineAction(formData: FormData) {
   const unitId = text(formData, "unitId");
   const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId } });
   if (!unit) throw new Error("Unidade inválida para a empresa.");
-  const machine = await prisma.machine.create({
-    data: {
-      companyId,
-      unitId,
-      ...machineFields(formData),
-    },
-  });
+  let machine;
+  try {
+    machine = await prisma.machine.create({
+      data: {
+        companyId,
+        unitId,
+        ...machineFields(formData),
+      },
+    });
+  } catch (error) {
+    if (isMachineCodeUniqueConflict(error)) redirect("/cliente/maquinas/nova?erro=codigo-duplicado");
+    throw error;
+  }
   await writeAudit(companyId, session.id, "MACHINE_CREATED", "Machine", machine.id, `Máquina ${machine.code} cadastrada.`);
   revalidatePath("/cliente/maquinas");
   revalidatePath("/admin/maquinas");
   redirect(`/cliente/maquinas/${machine.id}`);
+}
+
+function isMachineCodeUniqueConflict(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error) || error.code !== "P2002" || !("meta" in error)) return false;
+  const target = error.meta && typeof error.meta === "object" && "target" in error.meta ? error.meta.target : null;
+  return Array.isArray(target) ? target.includes("companyId") && target.includes("code") : typeof target === "string" && target.includes("companyId") && target.includes("code");
+}
+
+export async function checkMachineCodeAction({ machineId, companyId: requestedCompanyId, code: rawCode }: { machineId?: string; companyId?: string; code: string }) {
+  const session = await requireSession();
+  if (!canManageCompany(session)) return { available: false, message: "Você não tem permissão para editar máquinas." };
+
+  let companyId = isSuperAdmin(session) ? requestedCompanyId?.trim() : session.companyId;
+  if (machineId) {
+    const machine = await prisma.machine.findFirst({
+      where: { id: machineId, ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) },
+      select: { id: true, companyId: true },
+    });
+    if (!machine) return { available: false, message: "Máquina não encontrada ou sem acesso." };
+    companyId = machine.companyId;
+  }
+  if (!companyId) return { available: false, message: "Selecione a empresa da máquina." };
+
+  const code = rawCode.trim();
+  if (!code) return { available: true, message: null };
+
+  const conflict = await prisma.machine.findFirst({
+    where: { companyId, code, ...(machineId ? { id: { not: machineId } } : {}) },
+    select: { id: true },
+  });
+  return conflict
+    ? { available: false, message: "Este código já está cadastrado em outra máquina desta empresa. Informe um código exclusivo para continuar." }
+    : { available: true, message: null };
 }
 
 function machineFields(formData: FormData) {
@@ -188,7 +227,13 @@ export async function updateMachineAction(formData: FormData) {
   const unit = await prisma.unit.findFirst({ where: { id: unitId, companyId: machine.companyId }, select: { id: true } });
   if (!unit) throw new Error("Unidade inválida para a empresa da máquina.");
 
-  const updated = await prisma.machine.update({ where: { id: machine.id }, data: { ...machineFields(formData), unitId } });
+  let updated;
+  try {
+    updated = await prisma.machine.update({ where: { id: machine.id }, data: { ...machineFields(formData), unitId } });
+  } catch (error) {
+    if (isMachineCodeUniqueConflict(error)) redirect(`/cliente/maquinas/${machine.id}/editar?erro=codigo-duplicado`);
+    throw error;
+  }
   await writeAudit(machine.companyId, session.id, "MACHINE_UPDATED", "Machine", machine.id, `Dados da máquina ${updated.code} atualizados.`);
   revalidatePath("/cliente/maquinas");
   revalidatePath("/admin/maquinas");

@@ -13,10 +13,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: machine ? `Editar ${machine.name} | Portal Univelt` : "Máquina não encontrada" };
 }
 
-export default async function EditMachinePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditMachinePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ erro?: string | string[] }> }) {
   const session = await requireClient();
   if (!canManageCompany(session)) notFound();
-  const machine = await getMachine(session, (await params).id);
+  const [{ id }, { erro }] = await Promise.all([params, searchParams]);
+  const machine = await getMachine(session, id);
   if (!machine) notFound();
   const [units, companies] = await Promise.all([
     listUnits(session, machine.companyId),
@@ -27,7 +28,7 @@ export default async function EditMachinePage({ params }: { params: Promise<{ id
     <AuthenticatedShell variant="client">
       <div className="dashboard record-page">
         <section className="page-heading"><div><span className="eyebrow">Cadastro das máquinas</span><h1>Editar máquina</h1><p>Atualize os dados do equipamento. A empresa vinculada permanece a mesma.</p></div><Link className="button secondary" href={`/cliente/maquinas/${machine.id}`}>Voltar</Link></section>
-        <MachineForm session={session} machine={machine} companies={companies} units={units} />
+        <MachineForm session={session} machine={machine} companies={companies} units={units} codeConflictError={erro === "codigo-duplicado" ? "A máquina não foi alterada porque este código já está em uso nesta empresa. Informe um código exclusivo e tente novamente." : undefined} />
       </div>
     </AuthenticatedShell>
   );

@@ -4,6 +4,7 @@ import { createMachineAction, updateMachineAction } from "@/app/actions/records"
 import { isSuperAdmin } from "@/lib/auth/session";
 import type { SessionUser } from "@/lib/auth/session";
 import type { listCompanies, listUnits } from "@/lib/data/machines";
+import { MachineFormShell } from "./machine-form-shell";
 
 type CompanyOptions = Awaited<ReturnType<typeof listCompanies>>;
 type UnitOptions = Awaited<ReturnType<typeof listUnits>>;
@@ -13,17 +14,19 @@ export function MachineForm({
   machine,
   companies,
   units,
+  codeConflictError,
 }: {
   session: SessionUser;
   machine?: MachineView;
   companies: CompanyOptions;
   units: UnitOptions;
+  codeConflictError?: string;
 }) {
   const editing = Boolean(machine);
   const action = editing ? updateMachineAction : createMachineAction;
 
   return (
-    <form className="panel record-form" action={action}>
+    <MachineFormShell action={action} machineId={machine?.id} initialCode={machine?.code} initialError={codeConflictError} submitLabel={editing ? "Salvar alterações" : "Salvar máquina"}>
       {machine && <input type="hidden" name="machineId" value={machine.id} />}
       {machine && <input type="hidden" name="description" value={machine.description} />}
       {machine ? (
@@ -59,7 +62,6 @@ export function MachineForm({
       <label>Manutenção elétrica<input name="elecMaintenanceCount" type="number" defaultValue={machine?.elecMaintenanceCount ?? ""} /></label>
       <label className="full">Identificação de riscos - Elétrico<textarea name="elecMaintenanceSkills" rows={2} defaultValue={machine?.elecMaintenanceSkills ?? ""} /></label>
       <label className="full">Observações<textarea name="observations" rows={3} defaultValue={machine?.observations ?? ""} /></label>
-      <div className="form-actions"><button className="button primary" type="submit">{editing ? "Salvar alterações" : "Salvar máquina"}</button></div>
-    </form>
+    </MachineFormShell>
   );
 }

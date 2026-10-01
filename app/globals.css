@@ -314,6 +314,7 @@ tbody tr:hover { background: #fbfcfd; }
 .record-form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; padding: 22px; }
 .record-form label { display: flex; flex-direction: column; gap: 6px; color: #334256; font-size: 11px; font-weight: 700; }
 .record-form label.full { grid-column: 1 / -1; }
+.record-form .machine-code-error { grid-column: 1 / -1; margin: 0; padding: 12px 14px; border: 1px solid #f1c6ca; border-radius: 10px; color: #a32f39; background: #fff5f6; font-size: 13px; font-weight: 600; line-height: 1.45; }
 .record-form input, .record-form select, .record-form textarea { min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; }
 .hrn-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(210px, 1fr)); gap: 16px 18px; align-items: start; }
 .hrn-field { min-width: 0; }

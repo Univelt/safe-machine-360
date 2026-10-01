@@ -8,14 +8,15 @@ import { isSuperAdmin } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Cadastrar máquina" };
 
-export default async function NewMachinePage() {
+export default async function NewMachinePage({ searchParams }: { searchParams: Promise<{ erro?: string | string[] }> }) {
   const session = await requireClient();
   const [units, companies] = await Promise.all([listUnits(session), isSuperAdmin(session) ? listCompanies() : Promise.resolve([])]);
+  const { erro } = await searchParams;
   return (
     <AuthenticatedShell variant="client">
       <div className="dashboard record-page">
         <section className="page-heading"><div><span className="eyebrow">NR-12</span><h1>Cadastro das máquinas e equipamentos</h1><p>Campos da apresentação: equipamento, série, patrimônio/TAG, documento, revisão, setor, ano, fabricante, capacidade, categoria, HRN.</p></div><Link className="button secondary" href="/cliente/maquinas">Voltar</Link></section>
-        <MachineForm session={session} companies={companies} units={units} />
+        <MachineForm session={session} companies={companies} units={units} codeConflictError={erro === "codigo-duplicado" ? "Este código já está em uso nesta empresa. Informe um código exclusivo e tente novamente." : undefined} />
       </div>
     </AuthenticatedShell>
   );
