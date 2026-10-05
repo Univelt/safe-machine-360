@@ -46,7 +46,7 @@ export type MachineView = {
   energy: string;
   hrn: string;
   hrnResidual: string | null;
-  category: SafetyCategory | null;
+  category: string | null;
   assetTag: string | null;
   machineType: string | null;
   capacity: string | null;

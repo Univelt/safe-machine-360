@@ -189,7 +189,7 @@ model Machine {
   area                   String
   location               String?
   capacity               String?
-  category               SafetyCategory?
+  category               String?
   hrnCurrent             String
   hrnResidual            String?
   riskLevel              RiskLevel

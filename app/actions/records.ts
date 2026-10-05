@@ -13,7 +13,7 @@ import { canManageChecklistTemplate } from "@/lib/checklist-permissions";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
 import { assertAllowedActionPlanDocument, assertAllowedImage, assertAllowedUpload, deleteStoredFile, evidenceKindForFile, formatFileSize, getUploadedFile, getUploadedFiles, saveActionPlanAttachmentUpload, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload } from "@/lib/storage";
-import { classifyHrnPair, normalizeHrnValue, parseHrnValue } from "@/lib/labels";
+import { categoryLabels, classifyHrnPair, normalizeHrnValue, parseHrnValue } from "@/lib/labels";
 import { resolveMachineRisk } from "@/lib/machine-risk";
 
 function text(form: FormData, key: string) {
@@ -197,7 +197,7 @@ function machineFields(formData: FormData) {
     area: text(formData, "area") || "Geral",
     location: optional(formData, "location"),
     capacity: optional(formData, "capacity"),
-    category: (optional(formData, "category") as SafetyCategory | null) ?? null,
+    category: optional(formData, "category"),
     hrnCurrent,
     hrnResidual,
     ...resolvedRisk,
@@ -543,7 +543,7 @@ export async function createRiskAssessmentAction(formData: FormData) {
     data: {
       documentNumber: assessment.documentNumber,
       documentRevision: assessment.revision,
-      category: assessment.category,
+      category: categoryLabels[assessment.category],
       hrnCurrent: String(assessment.hrnCurrent),
       hrnResidual: String(assessment.hrnResidual),
       riskLevel: machine.riskOrigin === "MANUAL" ? machine.riskLevel : assessment.riskLevel,

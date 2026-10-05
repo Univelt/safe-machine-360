@@ -30,7 +30,7 @@ test("spreadsheet preserves location and maintenance text and does not rename or
   assert.equal(sanitizeMachineImportDraft(rows[2])?.location, null);
 });
 
-test("PostgreSQL migration preserves existing machines, allows repeat N/A and protects real codes", async () => {
+test("PostgreSQL migrations preserve machines, protect real codes and accept category text", async () => {
   const db = new PGlite();
   try {
     const migrations = join(process.cwd(), "prisma/migrations");
@@ -60,5 +60,26 @@ test("PostgreSQL migration preserves existing machines, allows repeat N/A and pr
     await assert.rejects(db.exec(`UPDATE "Machine" SET code='EBI-01' WHERE id='na2'`), error => (error as { code?: string }).code === "23505");
     await db.exec(`UPDATE "Machine" SET code='N/A' WHERE id='legacy';`);
     assert.equal((await db.query<{ count: number }>(`SELECT COUNT(*)::integer AS count FROM "Machine"`)).rows[0].count, 6);
+    await db.exec(`UPDATE "Machine" SET category = CASE id
+      WHEN 'legacy' THEN 'B'::"SafetyCategory"
+      WHEN 'unassigned' THEN 'CAT_1'::"SafetyCategory"
+      WHEN 'na2' THEN 'CAT_2'::"SafetyCategory"
+      WHEN 'na3' THEN 'CAT_3'::"SafetyCategory"
+      WHEN 'na4' THEN 'CAT_4'::"SafetyCategory"
+      ELSE NULL END;`);
+    await db.exec(await readFile(join(migrations, "20261005140000_machine_category_text", "migration.sql"), "utf8"));
+    const categories = await db.query<{ id: string; category: string | null }>(`SELECT id,category FROM "Machine" ORDER BY id`);
+    assert.deepEqual(categories.rows, [
+      { id: "legacy", category: "B" },
+      { id: "na2", category: "2" },
+      { id: "na3", category: "3" },
+      { id: "na4", category: "4" },
+      { id: "other-company", category: null },
+      { id: "unassigned", category: "1" },
+    ]);
+    await db.query(`UPDATE "Machine" SET category=$1 WHERE id='legacy'`, ["Categoria especial — N/A"]);
+    assert.equal((await db.query<{ category: string }>(`SELECT category FROM "Machine" WHERE id='legacy'`)).rows[0].category, "Categoria especial — N/A");
+    const assessmentType = await db.query<{ udt_name: string }>(`SELECT udt_name FROM information_schema.columns WHERE table_name='RiskAssessment' AND column_name='category'`);
+    assert.equal(assessmentType.rows[0].udt_name, "SafetyCategory");
   } finally { await db.close(); }
 });
