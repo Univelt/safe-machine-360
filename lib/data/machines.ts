@@ -38,6 +38,7 @@ export function toMachineView(machine: MachineRecord): MachineView {
     tag: machine.tag,
     sector: machine.sector,
     area: machine.area,
+    location: machine.location,
     manufacturer: machine.manufacturer,
     model: machine.model,
     year: machine.year,

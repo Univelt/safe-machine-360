@@ -18,6 +18,7 @@ export function MachineMobileList({ machines }: { machines: MachineView[] }) {
           <dl>
             <div><dt>Empresa</dt><dd>{machine.companyName}</dd></div>
             <div><dt>Setor</dt><dd>{machine.sector}</dd></div>
+            {machine.location && <div><dt>Localização</dt><dd>{machine.location}</dd></div>}
           </dl>
           <div className="machine-mobile-statuses">
             <RiskBadge level={machine.riskLevel} hrn={machine.hrn} />

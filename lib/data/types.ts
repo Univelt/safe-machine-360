@@ -27,6 +27,7 @@ export type MachineView = {
   tag: string;
   sector: string;
   area: string;
+  location: string | null;
   manufacturer: string;
   model: string;
   year: string;
@@ -58,9 +59,9 @@ export type MachineView = {
   processCharacteristics: string | null;
   operatorCount: number | null;
   operatorSkills: string | null;
-  mechMaintenanceCount: number | null;
+  mechMaintenanceCount: string | null;
   mechMaintenanceSkills: string | null;
-  elecMaintenanceCount: number | null;
+  elecMaintenanceCount: string | null;
   elecMaintenanceSkills: string | null;
   companyId: string;
   companyName: string;

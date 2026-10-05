@@ -12,6 +12,7 @@ import {
   type MachineImportPreview,
 } from "@/lib/import/machine-import-map";
 import { prisma } from "@/lib/prisma";
+import { isUnassignedMachineCode } from "@/lib/machine-code";
 
 export type MachineImportPreviewResult = {
   companyId: string;
@@ -113,7 +114,7 @@ export async function confirmMachineImportAction(formData: FormData): Promise<Ma
   let skipped = 0;
 
   for (const row of drafts) {
-    if (existingCodes.has(row.code) || seen.has(row.code)) {
+    if (!isUnassignedMachineCode(row.code) && (existingCodes.has(row.code) || seen.has(row.code))) {
       skipped += 1;
       continue;
     }
@@ -139,6 +140,9 @@ export async function confirmMachineImportAction(formData: FormData): Promise<Ma
         year: String(row.year),
         sector: row.sector,
         area: row.area,
+        location: row.location,
+        mechMaintenanceCount: row.mechMaintenanceCount,
+        elecMaintenanceCount: row.elecMaintenanceCount,
         capacity: row.capacity,
         hrnCurrent: row.hrnCurrent === null ? "" : String(row.hrnCurrent),
         riskLevel: row.riskLevel,

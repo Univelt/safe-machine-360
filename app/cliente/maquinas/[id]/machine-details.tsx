@@ -55,6 +55,7 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
             <div><dt>Capacidade</dt><dd>{machine.capacity ?? "—"}</dd></div>
             <div><dt>Documento</dt><dd>{machine.documentNumber ?? "—"}</dd></div>
             <div><dt>Revisão</dt><dd>{machine.documentRevision ?? "—"}</dd></div>
+            <div><dt>Localização</dt><dd>{machine.location ?? "Não informada"}</dd></div>
           </dl></div></section>
 
           <MachinePhotos machine={machine} canMutate={canMutate} />
@@ -147,7 +148,9 @@ export function MachineDetails({ machine, canMutate, canManage }: { machine: Mac
             <div><dt>Processo</dt><dd>{machine.processCharacteristics ?? "—"}</dd></div>
             <div><dt>Operação</dt><dd>{machine.operatorCount ? `${machine.operatorCount} operador(es)` : "—"}</dd></div>
             <div><dt>Função dos operadores</dt><dd>{machine.operatorSkills ?? "—"}</dd></div>
+            <div><dt>Manutenção mecânica</dt><dd>{machine.mechMaintenanceCount ?? "—"}</dd></div>
             <div><dt>Identificação de riscos - Mecânico</dt><dd>{machine.mechMaintenanceSkills ?? "—"}</dd></div>
+            <div><dt>Manutenção elétrica</dt><dd>{machine.elecMaintenanceCount ?? "—"}</dd></div>
             <div><dt>Identificação de riscos - Elétrico</dt><dd>{machine.elecMaintenanceSkills ?? "—"}</dd></div>
           </dl></section>
           {machine.observations && <section className="machine-alert"><AlertTriangle size={19} /><div><strong>Observações</strong><p>{machine.observations}</p></div></section>}

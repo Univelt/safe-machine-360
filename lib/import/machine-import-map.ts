@@ -1,11 +1,15 @@
 import type { RiskLevel, RiskOrigin } from "@prisma/client";
 import { classifyHrn, riskLabels } from "../labels";
+import { isUnassignedMachineCode } from "../machine-code";
 
 export type MachineImportColumn =
   | "code"
   | "name"
   | "machineType"
   | "sector"
+  | "location"
+  | "mechMaintenanceCount"
+  | "elecMaintenanceCount"
   | "manufacturer"
   | "model"
   | "year"
@@ -28,6 +32,9 @@ export type MachineImportDraft = {
   year: number;
   sector: string;
   area: string;
+  location: string | null;
+  mechMaintenanceCount: string | null;
+  elecMaintenanceCount: string | null;
   capacity: string | null;
   riskLevel: RiskLevel;
   riskOrigin: RiskOrigin;
@@ -58,6 +65,9 @@ export const machineImportFieldLabels: Record<MachineImportColumn, string> = {
   name: "Nome do equipamento",
   machineType: "Tipo de máquina",
   sector: "Setor e área",
+  location: "Localização",
+  mechMaintenanceCount: "Manutenção mecânica",
+  elecMaintenanceCount: "Manutenção elétrica",
   manufacturer: "Fabricante",
   model: "Modelo",
   year: "Ano de fabricação",
@@ -81,6 +91,11 @@ export function normalizeHeader(value: string) {
 export function classifyHeader(header: string): MachineImportColumn | null {
   const h = normalizeHeader(header);
   if (!h) return null;
+  if (h === "localizacao" || h === "local" || h === "planta") return "location";
+  if (h.includes("manutencao") && !h.includes("habilidade") && !h.includes("risco")) {
+    if (h.includes("mecanic")) return "mechMaintenanceCount";
+    if (h.includes("eletric")) return "elecMaintenanceCount";
+  }
   if (h === "item" || h.startsWith("item ")) return null;
   if (h.includes("foto") || h.includes("80 20") || h === "80/20") return null;
   if (h.includes("codigo interno") || (h.includes("codigo") && !h.includes("hrn") && !h.includes("documento"))) return "code";
@@ -241,6 +256,9 @@ export function draftFromMappedRow(rowNumber: number, cells: Partial<Record<Mach
     year,
     sector,
     area,
+    location: oneLine(cells.location ?? "") || null,
+    mechMaintenanceCount: cellToText(cells.mechMaintenanceCount ?? "") || null,
+    elecMaintenanceCount: cellToText(cells.elecMaintenanceCount ?? "") || null,
     capacity: isUnidentified(capacityText) ? null : capacityText,
     riskLevel,
     riskOrigin,
@@ -298,6 +316,9 @@ export function sanitizeMachineImportDraft(value: unknown): MachineImportDraft |
     year: Number.isFinite(year) ? Math.round(year) : 0,
     sector: String(row.sector ?? "Não identificado").trim() || "Não identificado",
     area: String(row.area ?? "Geral").trim() || "Geral",
+    location: String(row.location ?? "").trim() || null,
+    mechMaintenanceCount: String(row.mechMaintenanceCount ?? "").trim() || null,
+    elecMaintenanceCount: String(row.elecMaintenanceCount ?? "").trim() || null,
     capacity: String(row.capacity ?? "").trim() || null,
     riskLevel,
     riskOrigin,
@@ -322,11 +343,14 @@ function uniqueImportCode(base: string, used: Set<string>) {
 }
 
 export function applyImportConflicts(rows: MachineImportDraft[], existingCodes: Iterable<string>) {
-  const existing = new Set([...existingCodes].map((code) => normalizeHeader(code)));
+  const existing = new Set([...existingCodes].filter((code) => !isUnassignedMachineCode(code)).map((code) => normalizeHeader(code)));
   const used = new Set(existing);
   const seen = new Map<string, number>();
 
   return rows.map((row) => {
+    if (isUnassignedMachineCode(row.code)) {
+      return { ...row, existsInCompany: false, duplicateInFile: false };
+    }
     const key = normalizeHeader(row.code);
     const count = seen.get(key) ?? 0;
     seen.set(key, count + 1);

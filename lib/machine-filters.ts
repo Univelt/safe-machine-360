@@ -16,6 +16,7 @@ type FilterableMachine = {
   manufacturer: string;
   companyName: string;
   sector: string;
+  location?: string | null;
   risk: string;
   riskLevel?: string;
   appreciation: string;
@@ -48,7 +49,7 @@ const isUnset = (value: string | undefined, defaultValue: string) => !value || v
 export function filterMachines<T extends FilterableMachine>(machines: T[], options: MachineFilterOptions = {}) {
   const query = options.query?.trim().toLocaleLowerCase("pt-BR") ?? "";
   const filtered = machines.filter((machine) => {
-    const matchesQuery = !query || [machine.name, machine.code, machine.tag, machine.manufacturer, machine.companyName]
+    const matchesQuery = !query || [machine.name, machine.code, machine.tag, machine.manufacturer, machine.companyName, machine.location ?? ""]
       .some((value) => value.toLocaleLowerCase("pt-BR").includes(query));
     const matchesCompany = isUnset(options.company, "all") || machine.companyName === options.company;
     const matchesSector = isUnset(options.sector, "Todos") || machine.sector === options.sector;

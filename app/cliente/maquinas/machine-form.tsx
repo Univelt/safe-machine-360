@@ -36,7 +36,7 @@ export function MachineForm({
       )}
       <label>Unidade<select name="unitId" required defaultValue={machine?.unitId ?? units[0]?.id ?? ""}>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></label>
       <label>Equipamento<input name="name" required defaultValue={machine?.name ?? ""} placeholder="Inspetora Eletrônica EBI 01" /></label>
-      <label>Código<input name="code" required defaultValue={machine?.code ?? ""} placeholder="EBI-01" /></label>
+      <label>Código<input name="code" required defaultValue={machine?.code ?? ""} placeholder="EBI-01 ou N/A" /><small>Use N/A quando a máquina não tiver código interno.</small></label>
       <label>Número de série<input name="serial" required defaultValue={machine?.serial ?? ""} /></label>
       <label>Patrimônio/TAG<input name="tag" required defaultValue={machine?.tag ?? ""} /><input type="hidden" name="assetTag" value={machine?.assetTag && machine.assetTag !== machine.tag ? machine.assetTag : ""} /></label>
       <label>Tipo de máquina<input name="machineType" defaultValue={machine?.machineType ?? ""} placeholder="Inspeção de garrafas" /></label>
@@ -45,6 +45,7 @@ export function MachineForm({
       <label>Ano de fabricação<input name="year" type="text" required defaultValue={machine?.year ?? ""} /></label>
       <label>Setor<input name="sector" required defaultValue={machine?.sector ?? ""} /></label>
       <label>Área<input name="area" defaultValue={machine?.area ?? ""} /></label>
+      <label className="full">Localização<input name="location" type="text" defaultValue={machine?.location ?? ""} placeholder="Ex.: Planta Alta, Planta Baixa ou Linha 2" /></label>
       <label>Capacidade<input name="capacity" defaultValue={machine?.capacity ?? ""} /></label>
       <label>Documento<input name="documentNumber" defaultValue={machine?.documentNumber ?? ""} placeholder="APR-001" /></label>
       <label>Revisão<input name="documentRevision" defaultValue={machine?.documentRevision ?? ""} placeholder="1.0" /></label>
@@ -57,9 +58,9 @@ export function MachineForm({
       <label className="full">Características de processo<textarea name="processCharacteristics" rows={2} defaultValue={machine?.processCharacteristics ?? ""} /></label>
       <label>Operadores<input name="operatorCount" type="number" defaultValue={machine?.operatorCount ?? ""} /></label>
       <label className="full">Função dos operadores<textarea name="operatorSkills" rows={2} defaultValue={machine?.operatorSkills ?? ""} /></label>
-      <label>Manutenção mecânica<input name="mechMaintenanceCount" type="number" defaultValue={machine?.mechMaintenanceCount ?? ""} /></label>
+      <label className="full">Manutenção mecânica<input name="mechMaintenanceCount" type="text" defaultValue={machine?.mechMaintenanceCount ?? ""} /></label>
       <label className="full">Identificação de riscos - Mecânico<textarea name="mechMaintenanceSkills" rows={2} defaultValue={machine?.mechMaintenanceSkills ?? ""} /></label>
-      <label>Manutenção elétrica<input name="elecMaintenanceCount" type="number" defaultValue={machine?.elecMaintenanceCount ?? ""} /></label>
+      <label className="full">Manutenção elétrica<input name="elecMaintenanceCount" type="text" defaultValue={machine?.elecMaintenanceCount ?? ""} /></label>
       <label className="full">Identificação de riscos - Elétrico<textarea name="elecMaintenanceSkills" rows={2} defaultValue={machine?.elecMaintenanceSkills ?? ""} /></label>
       <label className="full">Observações<textarea name="observations" rows={3} defaultValue={machine?.observations ?? ""} /></label>
     </MachineFormShell>

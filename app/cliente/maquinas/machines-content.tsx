@@ -76,7 +76,7 @@ export function MachinesContent({ machines, companyName, canCreate }: { machines
         {filtered.length > 0 ? <><div className="responsive-table machine-desktop-list"><table className="machine-list-table"><thead><tr><th>Equipamento</th><th>Setor</th><th>Fabricante</th><th>Nível de risco</th><th>Apreciação</th><th>Checklist</th><th>Status</th><th><span className="sr-only">Abrir</span></th></tr></thead>
           <tbody>{paged.items.map((machine) => <tr key={machine.id}>
             <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><MachineThumbnail photos={machine.photos} /><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
-            <td><strong className="table-primary">{machine.sector}</strong><small className="table-secondary">{machine.area}</small></td>
+            <td><strong className="table-primary">{machine.sector}</strong><small className="table-secondary">{[machine.area, machine.location].filter(Boolean).join(" · ")}</small></td>
             <td><strong className="table-primary">{machine.manufacturer}</strong><small className="table-secondary">{machine.model}</small></td>
             <td><RiskBadge level={machine.riskLevel} hrn={machine.hrn} /></td>
             <td><span className={`doc-pill ${documentTone(machine.appreciation)}`}>{machine.appreciation}</span><small className="table-secondary">{machine.appreciationDate}</small></td>

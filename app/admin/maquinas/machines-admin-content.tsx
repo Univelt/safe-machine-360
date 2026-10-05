@@ -76,7 +76,7 @@ export function MachinesAdminContent({ machines, initialCompany = "all", context
               <tr key={machine.id}>
                 <td><Link className="machine-cell" href={`/cliente/maquinas/${machine.id}`}><MachineThumbnail photos={machine.photos} /><span><strong>{machine.name}</strong><small>{machine.code} · {machine.tag}</small></span></Link></td>
                 <td><strong className="table-primary">{machine.companyName}</strong></td>
-                <td>{machine.sector}</td>
+                <td><strong className="table-primary">{machine.sector}</strong>{machine.location && <small className="table-secondary">{machine.location}</small>}</td>
                 <td><RiskBadge level={machine.riskLevel} hrn={machine.hrn} /></td>
                 <td><div className="admin-machine-docs"><span className={`doc-pill ${documentTone(machine.appreciation)}`}>APR: {machine.appreciation}</span><span className={`doc-pill ${documentTone(machine.checklist)}`}>Checklist: {machine.checklist}</span></div></td>
                 <td><span className={`operation-status ${machine.status === "Operacional" ? "online" : machine.status === "Interditada" ? "blocked" : "maintenance"}`}><span />{machine.status}</span></td>

@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts tests/checklist-evolution.test.ts tests/friendly-errors.test.ts",
+    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts tests/checklist-evolution.test.ts tests/friendly-errors.test.ts tests/machine-registration.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:up": "docker compose up -d postgres",
@@ -43,6 +43,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

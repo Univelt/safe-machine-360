@@ -3,6 +3,7 @@
 import { formatFriendlyError } from "@/lib/friendly-errors";
 import { reportServerError } from "@/lib/action-errors";
 import { UserFacingError } from "@/lib/friendly-errors";
+import { isUnassignedMachineCode } from "@/lib/machine-code";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActivityPriority, ActivityStatus, AuditOperation, DocumentKind, MachineStatus, RiskLevel, SafetyCategory, UserRole } from "@prisma/client";
@@ -161,7 +162,7 @@ export async function checkMachineCodeAction({ machineId, companyId: requestedCo
   if (!companyId) return { available: false, message: "Selecione a empresa da máquina." };
 
   const code = rawCode.trim();
-  if (!code) return { available: true, message: null };
+  if (!code || isUnassignedMachineCode(code)) return { available: true, message: null };
 
   const conflict = await prisma.machine.findFirst({
     where: { companyId, code, ...(machineId ? { id: { not: machineId } } : {}) },
@@ -194,6 +195,7 @@ function machineFields(formData: FormData) {
     year: text(formData, "year"),
     sector: text(formData, "sector"),
     area: text(formData, "area") || "Geral",
+    location: optional(formData, "location"),
     capacity: optional(formData, "capacity"),
     category: (optional(formData, "category") as SafetyCategory | null) ?? null,
     hrnCurrent,
@@ -205,9 +207,9 @@ function machineFields(formData: FormData) {
     processCharacteristics: optional(formData, "processCharacteristics"),
     operatorCount: numberValue(formData, "operatorCount") || null,
     operatorSkills: optional(formData, "operatorSkills"),
-    mechMaintenanceCount: numberValue(formData, "mechMaintenanceCount") || null,
+    mechMaintenanceCount: optional(formData, "mechMaintenanceCount"),
     mechMaintenanceSkills: optional(formData, "mechMaintenanceSkills"),
-    elecMaintenanceCount: numberValue(formData, "elecMaintenanceCount") || null,
+    elecMaintenanceCount: optional(formData, "elecMaintenanceCount"),
     elecMaintenanceSkills: optional(formData, "elecMaintenanceSkills"),
     observations: optional(formData, "observations"),
     documentNumber: optional(formData, "documentNumber"),

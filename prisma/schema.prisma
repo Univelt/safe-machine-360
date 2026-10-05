@@ -187,6 +187,7 @@ model Machine {
   year                   String
   sector                 String
   area                   String
+  location               String?
   capacity               String?
   category               SafetyCategory?
   hrnCurrent             String
@@ -200,9 +201,9 @@ model Machine {
   processCharacteristics String?
   operatorCount          Int?
   operatorSkills         String?
-  mechMaintenanceCount   Int?
+  mechMaintenanceCount   String?
   mechMaintenanceSkills  String?
-  elecMaintenanceCount   Int?
+  elecMaintenanceCount   String?
   elecMaintenanceSkills  String?
   equipmentLimits        String?
   observations           String?
@@ -222,7 +223,8 @@ model Machine {
   checklists      ChecklistExecution[]
   actionPlans     ActionPlan[]
 
-  @@unique([companyId, code])
+  // Unique codes except N/A: partial unique index in 20261005120000_machine_location_maintenance_text.
+  // Prisma 6 cannot express partial indexes. Preserve this custom index in future migrations.
   @@index([companyId])
   @@index([unitId])
   @@index([riskLevel])
