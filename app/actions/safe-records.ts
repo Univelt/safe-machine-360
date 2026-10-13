@@ -15,6 +15,7 @@ export async function deleteMachineAction(data: FormData) { return runSafeAction
 export async function uploadMachinePhotoAction(data: FormData) { return runSafeAction("machine.photo.upload", () => records.uploadMachinePhotoAction(data)); }
 export async function deleteMachinePhotoAction(data: FormData) { return runSafeAction("machine.photo.delete", () => records.deleteMachinePhotoAction(data)); }
 export async function updateMachinePhotoAction(data: FormData) { return runSafeAction("machine.photo.update", () => records.updateMachinePhotoAction(data)); }
+export async function prepareDocumentUploadAction(data: FormData) { return runSafeAction("document.upload.prepare", () => records.prepareDocumentUploadAction(data)); }
 export async function createDocumentAction(data: FormData) { return runSafeAction("document.create", () => records.createDocumentAction(data)); }
 export async function createActivityAction(data: FormData) { return runSafeAction("activity.create", () => records.createActivityAction(data)); }
 export async function updateActivityProgressAction(data: FormData) { return runSafeAction("activity.progress", () => records.updateActivityProgressAction(data)); }

@@ -190,15 +190,23 @@ test("lets users attach evidence and update activity progress", async () => {
 });
 
 test("lets users attach a file when registering a document", async () => {
-  const [form, action, api, details] = await Promise.all([
+  const [page, form, action, api, details, storage] = await Promise.all([
     source("app/cliente/documentos/novo/page.tsx"),
+    source("app/cliente/documentos/novo/document-create-form.tsx"),
     source("app/actions/records.ts"),
     source("app/api/documents/[id]/file/route.ts"),
     source("app/cliente/documentos/[id]/document-details.tsx"),
+    source("lib/storage.ts"),
   ]);
+  assert.match(page, /DocumentCreateForm/);
   assert.match(form, /type="file"/);
+  assert.match(form, /prepareDocumentUploadAction/);
+  assert.match(form, /data\.delete\("file"\)/);
   assert.match(action, /saveDocumentUpload/);
+  assert.match(action, /verifyDocumentUpload/);
+  assert.match(storage, /createPresignedPost/);
   assert.match(api, /companyFilter/);
+  assert.match(api, /createStoredFileDownloadUrl/);
   assert.match(details, /hasFile/);
 });
 

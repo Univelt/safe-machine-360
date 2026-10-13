@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { companyFilter } from "@/lib/data/scope";
 import { prisma } from "@/lib/prisma";
-import { fileNameFromPath, mimeForFormat, readStoredFile } from "@/lib/storage";
+import { createStoredFileDownloadUrl, fileNameFromPath, mimeForFormat, readStoredFile } from "@/lib/storage";
 
 async function handleGET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -21,11 +21,17 @@ async function handleGET(request: Request, { params }: { params: Promise<{ id: s
   }
 
   try {
-    const bytes = await readStoredFile(document.fileUrl);
-    const fileName = fileNameFromPath(document.fileUrl);
     const download = new URL(request.url).searchParams.get("download") === "1";
     const disposition = download ? "attachment" : "inline";
+    const signedUrl = await createStoredFileDownloadUrl(document.fileUrl, { format: document.format, disposition });
+    if (signedUrl) {
+      const response = NextResponse.redirect(signedUrl, 307);
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
+    }
 
+    const bytes = await readStoredFile(document.fileUrl);
+    const fileName = fileNameFromPath(document.fileUrl);
     return new NextResponse(new Uint8Array(bytes), {
       headers: {
         "Content-Type": mimeForFormat(document.format, fileName),

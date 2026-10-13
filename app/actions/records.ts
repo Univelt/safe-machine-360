@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { formatFriendlyError } from "@/lib/friendly-errors";
 import { reportServerError } from "@/lib/action-errors";
 import { UserFacingError } from "@/lib/friendly-errors";
@@ -11,8 +12,9 @@ import { requireAdmin, requireSession } from "@/lib/auth/guards";
 import { canManageCompany, canMutateOperations, isSuperAdmin } from "@/lib/auth/session";
 import { canManageChecklistTemplate } from "@/lib/checklist-permissions";
 import { hashPassword } from "@/lib/auth/password";
+import { signDocumentUploadToken, verifyDocumentUploadToken } from "@/lib/document-upload";
 import { prisma } from "@/lib/prisma";
-import { assertAllowedActionPlanDocument, assertAllowedImage, assertAllowedUpload, deleteStoredFile, evidenceKindForFile, formatFileSize, getUploadedFile, getUploadedFiles, saveActionPlanAttachmentUpload, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload } from "@/lib/storage";
+import { assertAllowedActionPlanDocument, assertAllowedImage, assertAllowedUpload, createDocumentUploadPost, deleteStoredFile, evidenceKindForFile, formatFileSize, getUploadedFile, getUploadedFiles, isS3StorageEnabled, saveActionPlanAttachmentUpload, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload, verifyDocumentUpload } from "@/lib/storage";
 import { categoryLabels, classifyHrnPair, normalizeHrnValue, parseHrnValue } from "@/lib/labels";
 import { resolveMachineRisk } from "@/lib/machine-risk";
 
@@ -365,35 +367,154 @@ export async function updateMachinePhotoAction(formData: FormData) {
   revalidatePath("/cliente/maquinas");
 }
 
+export async function prepareDocumentUploadAction(formData: FormData) {
+  const session = await requireSession();
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
+  const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
+
+  if (!isS3StorageEnabled()) return { ok: true, mode: "server" } as const;
+
+  const documentId = randomUUID();
+  const upload = await createDocumentUploadPost({
+    companyId: machine.companyId,
+    documentId,
+    fileName: text(formData, "fileName"),
+    contentType: text(formData, "contentType"),
+    sizeBytes: Number(text(formData, "sizeBytes")),
+  });
+  const token = await signDocumentUploadToken({
+    documentId,
+    companyId: machine.companyId,
+    machineId: machine.id,
+    userId: session.id,
+    storageKey: upload.storageKey,
+    fileName: upload.fileName,
+    contentType: upload.contentType,
+    format: upload.format,
+    sizeBytes: upload.sizeBytes,
+  });
+  return { ok: true, mode: "s3", upload: { url: upload.url, fields: upload.fields }, token } as const;
+}
+
 export async function createDocumentAction(formData: FormData) {
   const session = await requireSession();
   if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
   const machine = await prisma.machine.findFirst({ where: { id: text(formData, "machineId"), ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }) } });
   if (!machine) throw new UserFacingError("Máquina não encontrada.");
   const file = getUploadedFile(formData, "file");
-  if (file) assertAllowedUpload(file);
-  const expiration = optional(formData, "expirationDate");
-  const document = await prisma.document.create({
-    data: {
-      companyId: machine.companyId,
-      machineId: machine.id,
-      name: text(formData, "name"),
-      type: (text(formData, "type") || "OUTRO") as DocumentKind,
-      version: text(formData, "version") || "1.0",
-      issueDate: new Date(text(formData, "issueDate") || Date.now()),
-      expirationDate: expiration ? new Date(expiration) : null,
-      responsible: text(formData, "responsible") || session.name,
-      description: text(formData, "description") || "Documento vinculado à máquina.",
-    },
-  });
-  if (file) {
-    const saved = await saveDocumentUpload(file, machine.companyId, document.id);
-    await prisma.document.update({
-      where: { id: document.id },
-      data: { fileUrl: saved.relativePath, format: saved.format, size: saved.size },
-    });
+  const uploadToken = optional(formData, "uploadToken");
+  if (file && uploadToken) throw new UserFacingError("O formulário recebeu duas origens de arquivo. Selecione o anexo novamente.");
+  if (file && isS3StorageEnabled()) {
+    throw new UserFacingError("O arquivo precisa ser enviado diretamente ao armazenamento. Selecione o anexo e tente novamente.");
   }
-  await writeAudit(machine.companyId, session.id, "DOCUMENT_CREATED", "Document", document.id, `Documento ${document.name} vinculado a ${machine.code}.`, { parentId: machine.id });
+  if (uploadToken && !isS3StorageEnabled()) {
+    throw new UserFacingError("A autorização do arquivo não corresponde ao armazenamento configurado.");
+  }
+  if (file) assertAllowedUpload(file);
+
+  const expiration = optional(formData, "expirationDate");
+  const documentData = {
+    companyId: machine.companyId,
+    machineId: machine.id,
+    name: text(formData, "name"),
+    type: (text(formData, "type") || "OUTRO") as DocumentKind,
+    version: text(formData, "version") || "1.0",
+    issueDate: new Date(text(formData, "issueDate") || Date.now()),
+    expirationDate: expiration ? new Date(expiration) : null,
+    responsible: text(formData, "responsible") || session.name,
+    description: text(formData, "description") || "Documento vinculado à máquina.",
+  };
+
+  let document;
+  let auditWritten = false;
+  if (uploadToken) {
+    const claims = await verifyDocumentUploadToken(uploadToken);
+    if (claims.userId !== session.id || claims.companyId !== machine.companyId || claims.machineId !== machine.id) {
+      throw new UserFacingError("A autorização do arquivo não pertence a esta sessão, empresa ou máquina.");
+    }
+    let saved;
+    try {
+      saved = await verifyDocumentUpload({
+        companyId: claims.companyId,
+        documentId: claims.documentId,
+        storageKey: claims.storageKey,
+        fileName: claims.fileName,
+        contentType: claims.contentType,
+        sizeBytes: claims.sizeBytes,
+      });
+      if (saved.format !== claims.format) throw new UserFacingError("O formato confirmado não corresponde ao arquivo autorizado.");
+    } catch (error) {
+      await deleteStoredFile(claims.storageKey);
+      throw error;
+    }
+
+    const existing = await prisma.document.findUnique({ where: { id: claims.documentId } });
+    if (existing) {
+      if (existing.companyId !== claims.companyId || existing.machineId !== claims.machineId || existing.fileUrl !== claims.storageKey) {
+        throw new UserFacingError("Esta autorização de arquivo já foi utilizada.");
+      }
+      revalidatePath("/cliente/documentos");
+      revalidatePath(`/cliente/maquinas/${machine.id}`);
+      redirect("/cliente/documentos");
+    }
+
+    try {
+      document = await prisma.$transaction(async (transaction) => {
+        const created = await transaction.document.create({
+          data: {
+            id: claims.documentId,
+            ...documentData,
+            fileUrl: saved.relativePath,
+            format: saved.format,
+            size: saved.size,
+          },
+        });
+        await transaction.auditLog.create({
+          data: {
+            companyId: machine.companyId,
+            userId: session.id,
+            action: "DOCUMENT_CREATED",
+            operation: "CREATE",
+            entity: "Document",
+            entityId: created.id,
+            parentId: machine.id,
+            summary: `Documento ${created.name} vinculado a ${machine.code}.`,
+          },
+        });
+        return created;
+      });
+      auditWritten = true;
+    } catch (error) {
+      const completed = await prisma.document.findUnique({ where: { id: claims.documentId } });
+      if (completed?.companyId === claims.companyId && completed.machineId === claims.machineId && completed.fileUrl === claims.storageKey) {
+        revalidatePath("/cliente/documentos");
+        revalidatePath(`/cliente/maquinas/${machine.id}`);
+        redirect("/cliente/documentos");
+      }
+      await deleteStoredFile(claims.storageKey);
+      throw error;
+    }
+  } else {
+    document = await prisma.document.create({ data: documentData });
+    if (file) {
+      let saved: Awaited<ReturnType<typeof saveDocumentUpload>> | null = null;
+      try {
+        saved = await saveDocumentUpload(file, machine.companyId, document.id);
+        document = await prisma.document.update({
+          where: { id: document.id },
+          data: { fileUrl: saved.relativePath, format: saved.format, size: saved.size },
+        });
+      } catch (error) {
+        if (saved) await deleteStoredFile(saved.relativePath);
+        await prisma.document.delete({ where: { id: document.id } }).catch(() => undefined);
+        throw error;
+      }
+    }
+  }
+  if (!auditWritten) {
+    await writeAudit(machine.companyId, session.id, "DOCUMENT_CREATED", "Document", document.id, `Documento ${document.name} vinculado a ${machine.code}.`, { parentId: machine.id });
+  }
   revalidatePath("/cliente/documentos");
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   redirect("/cliente/documentos");

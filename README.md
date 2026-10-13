@@ -47,3 +47,7 @@ Acessos do seed:
 ## Banco e RDS
 
 Veja `docs/rds.md`. O schema está em `prisma/schema.prisma`.
+
+## Documentos no S3
+
+O upload direto e privado de documentos requer CORS e permissões IAM no bucket. Veja `docs/s3-documents.md`.

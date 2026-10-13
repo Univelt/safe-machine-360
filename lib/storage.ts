@@ -1,9 +1,24 @@
 import { UserFacingError } from "@/lib/friendly-errors";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+const PRESIGNED_POST_OVERHEAD_BYTES = 1024 * 1024;
+const UPLOAD_URL_TTL_SECONDS = 5 * 60;
+const DOWNLOAD_URL_TTL_SECONDS = 60;
+
+export type DocumentUploadMetadata = {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+};
+
+export type ValidatedDocumentUpload = DocumentUploadMetadata & {
+  format: string;
+};
 
 const FORMAT_BY_EXTENSION: Record<string, string> = {
   pdf: "PDF",
@@ -77,6 +92,87 @@ export function assertAllowedUpload(file: File) {
   }
 }
 
+export function validateDocumentUploadMetadata(metadata: DocumentUploadMetadata): ValidatedDocumentUpload {
+  if (!Number.isSafeInteger(metadata.sizeBytes) || metadata.sizeBytes <= 0) {
+    throw new UserFacingError("Selecione um arquivo válido para enviar.");
+  }
+  if (metadata.sizeBytes > MAX_UPLOAD_BYTES) {
+    throw new UserFacingError("O anexo deve ter no máximo 20 MB.");
+  }
+  const extensionFormat = FORMAT_BY_EXTENSION[extensionOf(metadata.fileName)];
+  const mimeFormat = FORMAT_BY_MIME[metadata.contentType.toLowerCase()];
+  if (!extensionFormat || !mimeFormat || extensionFormat !== mimeFormat) {
+    throw new UserFacingError("Anexe PDF, imagem, Word ou Excel com formato válido.");
+  }
+  return {
+    fileName: sanitizeFileName(metadata.fileName, extensionFormat),
+    contentType: MIME_BY_FORMAT[extensionFormat],
+    sizeBytes: metadata.sizeBytes,
+    format: extensionFormat,
+  };
+}
+
+export function buildDocumentStorageKey(companyId: string, documentId: string, fileName: string, format: string) {
+  return sanitizeRelativePath([
+    "documents",
+    storageId(companyId),
+    storageId(documentId),
+    sanitizeFileName(fileName, format),
+  ].join("/"));
+}
+
+export async function createDocumentUploadPost(input: DocumentUploadMetadata & { companyId: string; documentId: string }) {
+  if (!isS3StorageEnabled()) throw new Error("Armazenamento S3 não configurado.");
+  const validated = validateDocumentUploadMetadata(input);
+  const storageKey = buildDocumentStorageKey(input.companyId, input.documentId, validated.fileName, validated.format);
+  const result = await createPresignedPost(s3Client(), {
+    Bucket: requireBucket(),
+    Key: storageKey,
+    Expires: UPLOAD_URL_TTL_SECONDS,
+    Fields: {
+      "Content-Type": validated.contentType,
+      "x-amz-meta-ms360-document-id": input.documentId,
+    },
+    Conditions: [
+      ["content-length-range", 1, MAX_UPLOAD_BYTES + PRESIGNED_POST_OVERHEAD_BYTES],
+      ["eq", "$Content-Type", validated.contentType],
+      ["eq", "$x-amz-meta-ms360-document-id", input.documentId],
+    ],
+  });
+  return { ...result, ...validated, storageKey };
+}
+
+export async function verifyDocumentUpload(input: DocumentUploadMetadata & {
+  companyId: string;
+  documentId: string;
+  storageKey: string;
+}) {
+  if (!isS3StorageEnabled()) throw new Error("Armazenamento S3 não configurado.");
+  const validated = validateDocumentUploadMetadata(input);
+  const expectedKey = buildDocumentStorageKey(input.companyId, input.documentId, validated.fileName, validated.format);
+  const storageKey = sanitizeRelativePath(input.storageKey);
+  if (storageKey !== expectedKey) {
+    throw new UserFacingError("A autorização do arquivo não corresponde a este documento.");
+  }
+
+  const object = await s3Client().send(new HeadObjectCommand({ Bucket: requireBucket(), Key: storageKey }));
+  if (object.ContentLength !== validated.sizeBytes || object.ContentLength > MAX_UPLOAD_BYTES) {
+    throw new UserFacingError("O arquivo recebido não corresponde ao tamanho autorizado.");
+  }
+  if ((object.ContentType ?? "").toLowerCase() !== validated.contentType.toLowerCase()) {
+    throw new UserFacingError("O arquivo recebido não corresponde ao formato autorizado.");
+  }
+  if (object.Metadata?.["ms360-document-id"] !== input.documentId) {
+    throw new UserFacingError("Não foi possível confirmar a origem segura do arquivo.");
+  }
+  return {
+    relativePath: storageKey,
+    format: validated.format,
+    size: formatFileSize(object.ContentLength),
+    fileName: validated.fileName,
+  };
+}
+
 export function assertAllowedImage(file: File) {
   if (file.size > MAX_UPLOAD_BYTES) {
     throw new UserFacingError("A foto deve ter no máximo 20 MB.");
@@ -103,7 +199,7 @@ async function persistUpload(file: File, format: string, segments: string[]) {
   const safeName = sanitizeFileName(file.name, format);
   const relativePath = sanitizeRelativePath([...segments, safeName].join("/"));
   const buffer = Buffer.from(await file.arrayBuffer());
-  if (isS3Enabled()) {
+  if (isS3StorageEnabled()) {
     await s3Client().send(
       new PutObjectCommand({
         Bucket: requireBucket(),
@@ -147,7 +243,7 @@ export function evidenceKindForFile(file: File) {
 
 export async function readStoredFile(relativePath: string) {
   const key = sanitizeRelativePath(relativePath);
-  if (isS3Enabled()) {
+  if (isS3StorageEnabled()) {
     const response = await s3Client().send(new GetObjectCommand({ Bucket: requireBucket(), Key: key }));
     if (!response.Body) throw new Error("Arquivo não encontrado.");
     return Buffer.from(await response.Body.transformToByteArray());
@@ -158,7 +254,7 @@ export async function readStoredFile(relativePath: string) {
 export async function deleteStoredFile(relativePath: string) {
   try {
     const key = sanitizeRelativePath(relativePath);
-    if (isS3Enabled()) {
+    if (isS3StorageEnabled()) {
       await s3Client().send(new DeleteObjectCommand({ Bucket: requireBucket(), Key: key }));
       return;
     }
@@ -166,6 +262,27 @@ export async function deleteStoredFile(relativePath: string) {
   } catch {
     // already gone
   }
+}
+
+export async function createStoredFileDownloadUrl(relativePath: string, options: {
+  format: string;
+  disposition: "inline" | "attachment";
+}) {
+  if (!isS3StorageEnabled()) return null;
+  const key = sanitizeRelativePath(relativePath);
+  const fileName = fileNameFromPath(key);
+  const asciiName = fileName.replace(/[^\x20-\x7e]+/g, "_").replace(/["\\]/g, "_");
+  const contentDisposition = `${options.disposition}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  return getSignedUrl(
+    s3Client(),
+    new GetObjectCommand({
+      Bucket: requireBucket(),
+      Key: key,
+      ResponseContentType: mimeForFormat(options.format, fileName),
+      ResponseContentDisposition: contentDisposition,
+    }),
+    { expiresIn: DOWNLOAD_URL_TTL_SECONDS },
+  );
 }
 
 export function fileNameFromPath(relativePath: string) {
@@ -195,7 +312,7 @@ function uploadRoot() {
   return path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads"));
 }
 
-function isS3Enabled() {
+export function isS3StorageEnabled() {
   return Boolean(process.env.S3_BUCKET);
 }
 
@@ -227,6 +344,11 @@ function detectFormat(file: File) {
 function extensionOf(fileName: string) {
   const parts = fileName.toLowerCase().split(".");
   return parts.length > 1 ? parts.at(-1) ?? "" : "";
+}
+
+function storageId(value: string) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(value)) throw new Error("Identificador de armazenamento inválido.");
+  return value;
 }
 
 function sanitizeFileName(name: string, format: string) {

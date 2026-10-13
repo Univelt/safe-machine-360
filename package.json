@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts tests/checklist-evolution.test.ts tests/friendly-errors.test.ts tests/machine-registration.test.ts",
+    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts tests/checklist-evolution.test.ts tests/friendly-errors.test.ts tests/machine-registration.test.ts tests/document-upload.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:up": "docker compose up -d postgres",
@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
+    "@aws-sdk/s3-presigned-post": "3.1127.0",
+    "@aws-sdk/s3-request-presigner": "3.1127.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
     "@hookform/resolvers": "^5.5.7",
