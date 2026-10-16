@@ -6,7 +6,7 @@ import { useState } from "react";
 import type { DocumentView } from "@/lib/data/types";
 import { InfoHint } from "@/app/components/info-hint";
 
-export function DocumentsContent({ documents, companyName, canCreate }: { documents: DocumentView[]; companyName: string; canCreate: boolean }) {
+export function DocumentsContent({ documents, companyName, canCreate, deletion }: { documents: DocumentView[]; companyName: string; canCreate: boolean; deletion?: { cleanupReference?: string } }) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState("Todos");
   const [status, setStatus] = useState("Todos");
@@ -20,6 +20,9 @@ export function DocumentsContent({ documents, companyName, canCreate }: { docume
   function clearFilters() { setQuery(""); setType("Todos"); setStatus("Todos"); }
 
   return <div className="dashboard documents-page">
+    {deletion && <div className={`document-deletion-notice${deletion.cleanupReference ? " warning" : ""}`} role="status">
+      {deletion.cleanupReference ? <><strong>O cadastro foi excluído, mas a remoção do arquivo não foi concluída.</strong><p>Não é necessário excluir novamente. Envie esta referência ao suporte para concluir a remoção do anexo: {deletion.cleanupReference}</p></> : <><CheckCircle2 size={18} /><span>Documento excluído com sucesso.</span></>}
+    </div>}
     <div className="breadcrumb"><span>{companyName}</span><ChevronRight size={14} /><strong>Documentos</strong></div>
     <section className="page-heading"><div><span className="eyebrow">Controle documental</span><h1>Documentos e validades</h1><p>Acompanhe apreciações, checklists, laudos e registros vinculados às máquinas.</p></div>{canCreate && <Link className="button primary" href="/cliente/documentos/novo"><Plus size={16} /> Cadastrar documento</Link>}</section>
 

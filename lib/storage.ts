@@ -251,7 +251,7 @@ export async function readStoredFile(relativePath: string) {
   return readFile(resolveUploadPath(key));
 }
 
-export async function deleteStoredFile(relativePath: string) {
+export async function deleteStoredFile(relativePath: string, options: { strict?: boolean } = {}) {
   try {
     const key = sanitizeRelativePath(relativePath);
     if (isS3StorageEnabled()) {
@@ -259,8 +259,10 @@ export async function deleteStoredFile(relativePath: string) {
       return;
     }
     await unlink(resolveUploadPath(key));
-  } catch {
-    // already gone
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : null;
+    const name = error && typeof error === "object" && "name" in error ? error.name : null;
+    if (options.strict && code !== "ENOENT" && name !== "NoSuchKey") throw error;
   }
 }
 

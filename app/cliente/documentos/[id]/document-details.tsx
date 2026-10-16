@@ -2,8 +2,9 @@ import { Calendar, CheckCircle2, ChevronRight, Download, ExternalLink, FileKey2,
 import Link from "next/link";
 import Image from "next/image";
 import type { DocumentView } from "@/lib/data/types";
+import { DocumentDeleteForm } from "./document-delete-form";
 
-export function DocumentDetails({ document, companyName }: { document: DocumentView; companyName: string }) {
+export function DocumentDetails({ document, companyName, canDelete = false }: { document: DocumentView; companyName: string; canDelete?: boolean }) {
   const tone = document.status === "Válido" ? "valid" : document.status === "A vencer" ? "warning" : document.status === "Sem validade" ? "neutral" : "danger";
   const fileHref = `/api/documents/${document.id}/file`;
   return <div className="dashboard document-details-page">
@@ -16,6 +17,7 @@ export function DocumentDetails({ document, companyName }: { document: DocumentV
           <a className="button secondary" href={fileHref} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Visualizar</a>
           <a className="button primary" href={`${fileHref}?download=1`}><Download size={16} /> Baixar arquivo</a>
         </> : <span className="document-missing-file">Nenhum arquivo anexado</span>}
+        {canDelete && <DocumentDeleteForm document={document} />}
       </div>
     </section>
 

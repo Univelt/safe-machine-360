@@ -13,6 +13,7 @@ import { canManageCompany, canMutateOperations, isSuperAdmin } from "@/lib/auth/
 import { canManageChecklistTemplate } from "@/lib/checklist-permissions";
 import { hashPassword } from "@/lib/auth/password";
 import { signDocumentUploadToken, verifyDocumentUploadToken } from "@/lib/document-upload";
+import { deleteDocumentRecord } from "@/lib/document-deletion";
 import { prisma } from "@/lib/prisma";
 import { assertAllowedActionPlanDocument, assertAllowedImage, assertAllowedUpload, createDocumentUploadPost, deleteStoredFile, evidenceKindForFile, formatFileSize, getUploadedFile, getUploadedFiles, isS3StorageEnabled, saveActionPlanAttachmentUpload, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload, verifyDocumentUpload } from "@/lib/storage";
 import { categoryLabels, classifyHrnPair, normalizeHrnValue, parseHrnValue } from "@/lib/labels";
@@ -518,6 +519,18 @@ export async function createDocumentAction(formData: FormData) {
   revalidatePath("/cliente/documentos");
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   redirect("/cliente/documentos");
+}
+
+export async function deleteDocumentAction(formData: FormData) {
+  const session = await requireSession();
+  const document = await deleteDocumentRecord(prisma, session, text(formData, "documentId"));
+  let cleanupReference: string | undefined;
+  if (document.fileUrl) {
+    try { await deleteStoredFile(document.fileUrl, { strict: true }); }
+    catch (error) { cleanupReference = reportServerError(error, "document.file.delete").reference; }
+  }
+  for (const path of ["/cliente/documentos", `/cliente/documentos/${document.id}`, `/cliente/maquinas/${document.machineId}`, "/cliente/maquinas", "/admin/maquinas", "/cliente", "/", "/cliente/relatorios"]) revalidatePath(path);
+  redirect(`/cliente/documentos?deleted=1${cleanupReference ? `&cleanupReference=${encodeURIComponent(cleanupReference)}` : ""}`);
 }
 
 export async function createActivityAction(formData: FormData) {

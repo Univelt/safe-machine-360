@@ -4,6 +4,7 @@ import { AuthenticatedShell } from "../../../components/authenticated-shell";
 import { DocumentDetails } from "./document-details";
 import { requireClient } from "@/lib/auth/guards";
 import { getDocument } from "@/lib/data/catalog";
+import { canDeleteDocuments } from "@/lib/document-deletion";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const session = await requireClient();
@@ -15,5 +16,5 @@ export default async function DocumentDetailsPage({ params }: { params: Promise<
   const session = await requireClient();
   const document = await getDocument(session, (await params).id);
   if (!document) notFound();
-  return <AuthenticatedShell variant="client"><DocumentDetails document={document} companyName={session.companyName ?? "Empresa"} /></AuthenticatedShell>;
+  return <AuthenticatedShell variant="client"><DocumentDetails document={document} companyName={session.companyName ?? "Empresa"} canDelete={canDeleteDocuments(session)} /></AuthenticatedShell>;
 }

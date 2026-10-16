@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
+import { S3Client } from "@aws-sdk/client-s3";
 import { signDocumentUploadToken, verifyDocumentUploadToken, type DocumentUploadClaims } from "../lib/document-upload";
 import { buildDocumentStorageKey, createDocumentUploadPost, createStoredFileDownloadUrl, deleteStoredFile, MAX_UPLOAD_BYTES, readStoredFile, saveDocumentUpload, validateDocumentUploadMetadata } from "../lib/storage";
 
@@ -83,6 +84,30 @@ test("mantém o fallback de armazenamento local quando não há bucket", async (
     if (previousUploadDir === undefined) delete process.env.UPLOAD_DIR;
     else process.env.UPLOAD_DIR = previousUploadDir;
     await rm(uploadDir, { recursive: true, force: true });
+  }
+});
+
+test("exclusão estrita sinaliza falha no S3 sem ocultar a necessidade de limpeza", async context => {
+  const previousBucket = process.env.S3_BUCKET;
+  const previousKey = process.env.S3_ACCESS_KEY_ID;
+  const previousSecret = process.env.S3_SECRET_ACCESS_KEY;
+  process.env.S3_BUCKET = "bucket-de-teste";
+  process.env.S3_ACCESS_KEY_ID = "AKIATESTE";
+  process.env.S3_SECRET_ACCESS_KEY = "segredo-de-teste";
+  const denied = Object.assign(new Error("Denied"), { name: "AccessDenied" });
+  const send = context.mock.method(S3Client.prototype, "send", async () => { throw denied; });
+  try {
+    await assert.rejects(deleteStoredFile("documents/empresa-1/doc-1/laudo.pdf", { strict: true }), error => error === denied);
+    await deleteStoredFile("documents/empresa-1/doc-1/laudo.pdf");
+    assert.equal(send.mock.callCount(), 2);
+  } finally {
+    if (previousBucket === undefined) delete process.env.S3_BUCKET;
+    else process.env.S3_BUCKET = previousBucket;
+    if (previousKey === undefined) delete process.env.S3_ACCESS_KEY_ID;
+    else process.env.S3_ACCESS_KEY_ID = previousKey;
+    if (previousSecret === undefined) delete process.env.S3_SECRET_ACCESS_KEY;
+    else process.env.S3_SECRET_ACCESS_KEY = previousSecret;
+    send.mock.restore();
   }
 });
 
