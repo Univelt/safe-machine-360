@@ -16,7 +16,7 @@ import { signDocumentUploadToken, verifyDocumentUploadToken } from "@/lib/docume
 import { deleteDocumentRecord } from "@/lib/document-deletion";
 import { prisma } from "@/lib/prisma";
 import { assertAllowedActionPlanDocument, assertAllowedImage, assertAllowedUpload, createDocumentUploadPost, deleteStoredFile, evidenceKindForFile, formatFileSize, getUploadedFile, getUploadedFiles, isS3StorageEnabled, saveActionPlanAttachmentUpload, saveActivityEvidenceUpload, saveDocumentUpload, saveMachinePhotoUpload, verifyDocumentUpload } from "@/lib/storage";
-import { categoryLabels, classifyHrnPair, normalizeHrnValue, parseHrnValue } from "@/lib/labels";
+import { categoryLabels, classifyHrnPair, documentKindLabels, normalizeHrnValue, parseHrnValue } from "@/lib/labels";
 import { resolveMachineRisk } from "@/lib/machine-risk";
 
 function text(form: FormData, key: string) {
@@ -44,6 +44,11 @@ function dateValue(form: FormData, key: string) {
 function checked(form: FormData, key: string) {
   const value = String(form.get(key) ?? "").toLowerCase();
   return value === "true" || value === "on" || value === "1";
+}
+
+function documentKind(value: string): DocumentKind {
+  if (value in documentKindLabels) return value as DocumentKind;
+  throw new UserFacingError("Selecione um tipo de documento válido.");
 }
 
 function operationFromAction(action: string): AuditOperation {
@@ -419,7 +424,7 @@ export async function createDocumentAction(formData: FormData) {
     companyId: machine.companyId,
     machineId: machine.id,
     name: text(formData, "name"),
-    type: (text(formData, "type") || "OUTRO") as DocumentKind,
+    type: documentKind(text(formData, "type") || "OUTRO"),
     version: text(formData, "version") || "1.0",
     issueDate: new Date(text(formData, "issueDate") || Date.now()),
     expirationDate: expiration ? new Date(expiration) : null,
@@ -519,6 +524,50 @@ export async function createDocumentAction(formData: FormData) {
   revalidatePath("/cliente/documentos");
   revalidatePath(`/cliente/maquinas/${machine.id}`);
   redirect("/cliente/documentos");
+}
+
+export async function updateDocumentAction(formData: FormData) {
+  const session = await requireSession();
+  if (!canMutateOperations(session)) throw new UserFacingError("Sem permissão.");
+  const existing = await prisma.document.findFirst({
+    where: {
+      id: text(formData, "documentId"),
+      ...(isSuperAdmin(session) ? {} : { companyId: session.companyId ?? "__none__" }),
+    },
+  });
+  if (!existing) throw new UserFacingError("Documento não encontrado.");
+
+  const machine = await prisma.machine.findFirst({
+    where: { id: text(formData, "machineId"), companyId: existing.companyId },
+  });
+  if (!machine) throw new UserFacingError("Máquina não encontrada.");
+
+  const name = text(formData, "name");
+  const issueDate = text(formData, "issueDate");
+  if (!name) throw new UserFacingError("Informe o nome do documento.");
+  if (!issueDate) throw new UserFacingError("Informe a data de emissão.");
+
+  const expiration = optional(formData, "expirationDate");
+  const document = await prisma.document.update({
+    where: { id: existing.id },
+    data: {
+      machineId: machine.id,
+      name,
+      type: documentKind(text(formData, "type") || "OUTRO"),
+      version: text(formData, "version") || "1.0",
+      issueDate: dateValue(formData, "issueDate"),
+      expirationDate: expiration ? dateValue(formData, "expirationDate") : null,
+      responsible: text(formData, "responsible") || session.name,
+      description: text(formData, "description") || "Documento vinculado à máquina.",
+    },
+  });
+
+  await writeAudit(existing.companyId, session.id, "DOCUMENT_UPDATED", "Document", document.id, `Documento ${document.name} atualizado em ${machine.code}.`, { parentId: machine.id });
+  revalidatePath("/cliente/documentos");
+  revalidatePath(`/cliente/documentos/${document.id}`);
+  revalidatePath(`/cliente/maquinas/${existing.machineId}`);
+  revalidatePath(`/cliente/maquinas/${machine.id}`);
+  redirect(`/cliente/documentos/${document.id}`);
 }
 
 export async function deleteDocumentAction(formData: FormData) {

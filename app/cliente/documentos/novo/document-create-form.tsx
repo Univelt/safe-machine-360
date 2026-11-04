@@ -1,6 +1,7 @@
 "use client";
 
 import { createDocumentAction, prepareDocumentUploadAction } from "@/app/actions/safe-records";
+import { documentKindOptions } from "@/lib/labels";
 import { SafeForm } from "@/app/components/safe-form";
 import { describeError, isActionFailure, type ActionFailure, type FormActionResult } from "@/lib/friendly-errors";
 import { unstable_rethrow } from "next/navigation";
@@ -59,7 +60,7 @@ export function DocumentCreateForm({
     <SafeForm className="panel record-form" action={submit}>
       <label className="full">Máquina<select name="machineId" required defaultValue={defaultMachineId}>{machines.map((machine) => <option key={machine.id} value={machine.id}>{machine.code} · {machine.name}</option>)}</select></label>
       <label className="full">Nome<input name="name" required /></label>
-      <label>Tipo<select name="type"><option value="APRECIACAO_RISCO">Apreciação de risco</option><option value="APR">APR</option><option value="CHECKLIST_SEGURANCA">Checklist de segurança</option><option value="CHECKLIST_MANUTENCAO">Checklist de manutenção</option><option value="MANUAL">Manual</option><option value="LAUDO">Laudo</option><option value="ART">ART</option><option value="OUTRO">Outro</option></select></label>
+      <label>Tipo<select name="type" defaultValue="APRECIACAO_RISCO">{documentKindOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
       <label>Versão<input name="version" defaultValue="1.0" /></label>
       <label>Emissão<input name="issueDate" type="date" required /></label>
       <label>Validade<input name="expirationDate" type="date" /></label>

@@ -84,11 +84,14 @@ export const documentKindLabels: Record<DocumentKind, string> = {
   CHECKLIST_SEGURANCA: "Checklist de segurança",
   CHECKLIST_MANUTENCAO: "Checklist de manutenção",
   MANUAL: "Manual",
+  CADERNO_INSTRUCOES_INSTALACAO: "Caderno de instruções para Instalação",
   LAUDO: "Laudo",
   ART: "ART",
   APR: "APR",
   OUTRO: "Outro",
 };
+
+export const documentKindOptions = (Object.entries(documentKindLabels) as Array<[DocumentKind, string]>).map(([value, label]) => ({ value, label }));
 
 export const activityStatusLabels: Record<ActivityStatus, string> = {
   ABERTA: "Aberta",
@@ -212,6 +215,16 @@ export function computeDocumentStatus(expirationDate: Date | null, now = new Dat
   if (diffDays < 0) return "VENCIDO";
   if (diffDays <= 30) return "A_VENCER";
   return "VALIDO";
+}
+
+export function toDateInput(value: Date | string | null | undefined) {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function formatDate(value: Date | string | null | undefined) {

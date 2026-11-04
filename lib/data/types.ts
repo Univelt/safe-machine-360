@@ -1,4 +1,4 @@
-import type { ChecklistAnswer, PhotoKind, RiskLevel, RiskOrigin, SafetyCategory } from "@prisma/client";
+import type { ChecklistAnswer, DocumentKind, PhotoKind, RiskLevel, RiskOrigin, SafetyCategory } from "@prisma/client";
 
 export type MachinePhotoView = {
   id: string;
@@ -111,14 +111,18 @@ export type MachineView = {
 
 export type DocumentView = {
   id: string;
+  companyId: string;
   name: string;
   type: string;
+  typeKey: DocumentKind;
   machineId: string;
   machine: string;
   machineCode: string;
   version: string;
   issueDate: string;
+  issueDateInput: string;
   expirationDate: string;
+  expirationDateInput: string;
   daysLeft: number | null;
   status: string;
   statusKey: string;

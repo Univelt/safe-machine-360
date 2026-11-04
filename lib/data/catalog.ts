@@ -1,5 +1,5 @@
 import type { SessionUser } from "@/lib/auth/session";
-import { computeDocumentStatus, documentKindLabels, documentStatusLabels, formatDate, formatDateTime } from "@/lib/labels";
+import { computeDocumentStatus, documentKindLabels, documentStatusLabels, formatDate, formatDateTime, toDateInput } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
 import { getLastChange } from "./audit";
 import { companyFilter } from "./scope";
@@ -17,14 +17,18 @@ export async function listDocuments(session: SessionUser) {
       : null;
     return {
       id: document.id,
+      companyId: document.companyId,
       name: document.name,
       type: documentKindLabels[document.type],
+      typeKey: document.type,
       machineId: document.machineId,
       machine: document.machine.name,
       machineCode: document.machine.code,
       version: document.version,
       issueDate: formatDate(document.issueDate),
+      issueDateInput: toDateInput(document.issueDate),
       expirationDate: formatDate(document.expirationDate),
+      expirationDateInput: toDateInput(document.expirationDate),
       daysLeft,
       status: documentStatusLabels[status],
       statusKey: status,
