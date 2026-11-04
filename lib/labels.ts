@@ -227,18 +227,20 @@ export function toDateInput(value: Date | string | null | undefined) {
   return `${year}-${month}-${day}`;
 }
 
-export function formatDate(value: Date | string | null | undefined) {
+export function formatDate(value: Date | string | null | undefined, timeZone = "UTC") {
   if (!value) return "—";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR").format(date);
+  // Datas de calendário são gravadas à meia-noite UTC. O fuso explícito evita
+  // que o HTML do servidor (UTC) divirja do navegador e quebre a hidratação.
+  return new Intl.DateTimeFormat("pt-BR", { timeZone }).format(date);
 }
 
 export function formatDateTime(value: Date | string | null | undefined) {
   if (!value) return "—";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(date);
 }
 
 export function initialsOf(name: string) {

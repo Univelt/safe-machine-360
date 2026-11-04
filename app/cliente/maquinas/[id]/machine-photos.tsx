@@ -11,8 +11,12 @@ import type { MachineView } from "@/lib/data/types";
 import { formatDate } from "@/lib/labels";
 
 function todayInputValue() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function dateInputValue(value: string) {

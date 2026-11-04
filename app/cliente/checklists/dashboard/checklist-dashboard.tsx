@@ -172,11 +172,11 @@ function complianceTrend(executions: ChecklistDashboardData["executions"]) {
   });
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8).map(([key, value]) => ({
     key,
-    label: new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" }).format(new Date(`${key}-15T12:00:00`)).replace(" de ", "/"),
+    label: new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${key}-15T12:00:00Z`)).replace(" de ", "/"),
     value: value.yes + value.no ? Math.round(value.yes / (value.yes + value.no) * 100) : 0,
   }));
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR").format(new Date(value));
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(new Date(value));
 }

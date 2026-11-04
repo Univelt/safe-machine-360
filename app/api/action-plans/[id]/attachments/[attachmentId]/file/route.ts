@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { companyFilter } from "@/lib/data/scope";
 import { prisma } from "@/lib/prisma";
-import { fileNameFromPath, mimeForFormat, readStoredFile } from "@/lib/storage";
+import { createStoredFileDownloadUrl, fileNameFromPath, mimeForFormat, readStoredFile } from "@/lib/storage";
 
 async function handleGET(request: Request, { params }: { params: Promise<{ id: string; attachmentId: string }> }) {
   const session = await getSession();
@@ -12,10 +12,17 @@ async function handleGET(request: Request, { params }: { params: Promise<{ id: s
   const attachment = await prisma.actionPlanAttachment.findFirst({ where: { id: attachmentId, actionPlanId: id, actionPlan: companyFilter(session) }, select: { fileUrl: true, format: true, name: true } });
   if (!attachment?.fileUrl) return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
   try {
-    const bytes = await readStoredFile(attachment.fileUrl);
     const fileName = fileNameFromPath(attachment.fileUrl);
     const download = new URL(request.url).searchParams.get("download") === "1";
-    return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": mimeForFormat(attachment.format, fileName), "Content-Disposition": `${download ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(attachment.name)}`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+    const disposition = download ? "attachment" : "inline";
+    const signedUrl = await createStoredFileDownloadUrl(attachment.fileUrl, { format: attachment.format, disposition, fileName: attachment.name });
+    if (signedUrl) {
+      const response = NextResponse.redirect(signedUrl, 307);
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
+    }
+    const bytes = await readStoredFile(attachment.fileUrl);
+    return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": mimeForFormat(attachment.format, fileName), "Content-Disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(attachment.name)}`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) { return apiErrorResponse(error, "file.read"); }
 }
 

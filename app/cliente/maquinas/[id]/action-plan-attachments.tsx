@@ -3,6 +3,7 @@
 import { Download, FileText, LoaderCircle, Paperclip, Trash2, UploadCloud, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { describeError, formatApiError, formatFriendlyError } from "@/lib/friendly-errors";
+import { formatDateTime } from "@/lib/labels";
 
 type ExistingAttachment = { id: string; name: string; format: string; size: string; uploadedBy: string; createdAt: Date | string };
 type QueueItem = { id: string; file: File; progress: number; status: "ready" | "uploading" | "error"; error?: string };
@@ -85,7 +86,7 @@ export function ActionPlanAttachments({ planId, attachments, canMutate }: { plan
   return (
     <div className="action-plan-attachments">
       <div className="action-plan-attachments-head"><div><Paperclip size={16} /><strong>Documentos do plano</strong></div><span>{existing.length} arquivo(s)</span></div>
-      {existing.length > 0 && <ul className="attachment-list">{existing.map((attachment) => <li key={attachment.id}><FileText size={18} /><span><strong>{attachment.name}</strong><small>{attachment.format} · {attachment.size} · enviado por {attachment.uploadedBy} em {formatDate(attachment.createdAt)}</small></span><a className="icon-button" href={`/api/action-plans/${planId}/attachments/${attachment.id}/file?download=1`} aria-label={`Baixar ${attachment.name}`}><Download size={16} /></a>{canMutate && <button className="icon-button danger" type="button" onClick={() => removeExisting(attachment)} aria-label={`Excluir ${attachment.name}`}><Trash2 size={16} /></button>}</li>)}</ul>}
+      {existing.length > 0 && <ul className="attachment-list">{existing.map((attachment) => <li key={attachment.id}><FileText size={18} /><span><strong>{attachment.name}</strong><small>{attachment.format} · {attachment.size} · enviado por {attachment.uploadedBy} em {formatDateTime(attachment.createdAt)}</small></span><a className="icon-button" href={`/api/action-plans/${planId}/attachments/${attachment.id}/file?download=1`} aria-label={`Baixar ${attachment.name}`}><Download size={16} /></a>{canMutate && <button className="icon-button danger" type="button" onClick={() => removeExisting(attachment)} aria-label={`Excluir ${attachment.name}`}><Trash2 size={16} /></button>}</li>)}</ul>}
       {canMutate && <>
         <button className="attachment-dropzone" type="button" onClick={() => inputRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); addFiles([...event.dataTransfer.files]); }}><UploadCloud size={22} /><span><strong>Arraste PDF, DOC ou DOCX</strong><small>ou selecione arquivos de até 20 MB</small></span></button>
         <input ref={inputRef} className="sr-only" type="file" multiple accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { addFiles([...(event.target.files ?? [])]); event.target.value = ""; }} />
@@ -98,8 +99,4 @@ export function ActionPlanAttachments({ planId, attachments, canMutate }: { plan
 
 function formatBytes(bytes: number) {
   return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1).replace(".", ",")} KB` : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
-}
-
-function formatDate(value: Date | string) {
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }

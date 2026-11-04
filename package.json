@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts tests/checklist-evolution.test.ts tests/friendly-errors.test.ts tests/machine-registration.test.ts tests/document-upload.test.ts tests/document-deletion.test.ts",
+    "test": "node --test tests/project-foundation.test.mjs && tsx --test tests/machine-spreadsheet.test.ts tests/machine-filters.test.ts tests/checklist-evolution.test.ts tests/friendly-errors.test.ts tests/machine-registration.test.ts tests/document-upload.test.ts tests/document-deletion.test.ts tests/photo-upload.test.ts tests/date-format.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:up": "docker compose up -d postgres",
@@ -41,6 +41,7 @@
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-hook-form": "^7.83.0",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },

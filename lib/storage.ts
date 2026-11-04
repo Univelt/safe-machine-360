@@ -4,8 +4,12 @@ import path from "node:path";
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import sharp from "sharp";
 
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+const PHOTO_MAX_EDGE_PX = 3840;
+const PHOTO_JPEG_QUALITY = 92;
+const PHOTO_WEBP_QUALITY = 92;
 const PRESIGNED_POST_OVERHEAD_BYTES = 1024 * 1024;
 const UPLOAD_URL_TTL_SECONDS = 5 * 60;
 const DOWNLOAD_URL_TTL_SECONDS = 60;
@@ -195,10 +199,11 @@ export function assertAllowedActionPlanDocument(file: File) {
   return extensionFormat;
 }
 
-async function persistUpload(file: File, format: string, segments: string[]) {
+async function persistUpload(file: File, format: string, segments: string[], options: { compactImage?: boolean } = {}) {
   const safeName = sanitizeFileName(file.name, format);
   const relativePath = sanitizeRelativePath([...segments, safeName].join("/"));
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const source = Buffer.from(await file.arrayBuffer());
+  const buffer = options.compactImage ? await compactImage(source, format) : source;
   if (isS3StorageEnabled()) {
     await s3Client().send(
       new PutObjectCommand({
@@ -213,7 +218,34 @@ async function persistUpload(file: File, format: string, segments: string[]) {
     await mkdir(path.dirname(fullPath), { recursive: true });
     await writeFile(fullPath, buffer);
   }
-  return { relativePath, format, size: formatFileSize(file.size), fileName: safeName };
+  return { relativePath, format, size: formatFileSize(buffer.length), fileName: safeName };
+}
+
+async function compactImage(input: Buffer, format: string) {
+  if (!IMAGE_FORMATS.has(format)) return input;
+  try {
+    const image = sharp(input, { failOn: "error", limitInputPixels: 220_000_000, animated: false }).rotate();
+    const metadata = await image.clone().metadata();
+    const width = metadata.width ?? 0;
+    const height = metadata.height ?? 0;
+    if (!width || !height) throw new UserFacingError("Não foi possível ler a foto enviada.");
+
+    const oversized = width > PHOTO_MAX_EDGE_PX || height > PHOTO_MAX_EDGE_PX;
+    const resized = oversized
+      ? image.resize({ width: PHOTO_MAX_EDGE_PX, height: PHOTO_MAX_EDGE_PX, fit: "inside", withoutEnlargement: true })
+      : image;
+    const output = format === "PNG"
+      ? await resized.clone().png({ compressionLevel: 9, effort: 7, adaptiveFiltering: true }).toBuffer()
+      : format === "WEBP"
+        ? await resized.clone().webp({ quality: PHOTO_WEBP_QUALITY, effort: 4, smartSubsample: false }).toBuffer()
+        : await resized.clone().jpeg({ quality: PHOTO_JPEG_QUALITY, mozjpeg: true, progressive: true }).toBuffer();
+
+    if (output.length < input.length || oversized) return output;
+    return input;
+  } catch (error) {
+    if (error instanceof UserFacingError) throw error;
+    throw new UserFacingError("Não foi possível processar a foto. Envie um JPG, PNG ou WEBP válido.");
+  }
 }
 
 export async function saveDocumentUpload(file: File, companyId: string, documentId: string) {
@@ -223,12 +255,13 @@ export async function saveDocumentUpload(file: File, companyId: string, document
 
 export async function saveMachinePhotoUpload(file: File, companyId: string, machineId: string, photoId: string) {
   assertAllowedImage(file);
-  return persistUpload(file, detectFormat(file) ?? "JPG", ["photos", companyId, machineId, photoId]);
+  return persistUpload(file, detectFormat(file) ?? "JPG", ["photos", companyId, machineId, photoId], { compactImage: true });
 }
 
 export async function saveActivityEvidenceUpload(file: File, companyId: string, activityId: string, attachmentId: string) {
   assertAllowedUpload(file);
-  return persistUpload(file, detectFormat(file) ?? "PDF", ["activities", companyId, activityId, attachmentId]);
+  const format = detectFormat(file) ?? "PDF";
+  return persistUpload(file, format, ["activities", companyId, activityId, attachmentId], { compactImage: IMAGE_FORMATS.has(format) });
 }
 
 export async function saveActionPlanAttachmentUpload(file: File, companyId: string, actionPlanId: string, attachmentId: string) {
@@ -269,18 +302,20 @@ export async function deleteStoredFile(relativePath: string, options: { strict?:
 export async function createStoredFileDownloadUrl(relativePath: string, options: {
   format: string;
   disposition: "inline" | "attachment";
+  fileName?: string;
 }) {
   if (!isS3StorageEnabled()) return null;
   const key = sanitizeRelativePath(relativePath);
-  const fileName = fileNameFromPath(key);
-  const asciiName = fileName.replace(/[^\x20-\x7e]+/g, "_").replace(/["\\]/g, "_");
+  const storedName = fileNameFromPath(key);
+  const fileName = options.fileName?.trim() || storedName;
+  const asciiName = fileName.replace(/[^\x20-\x7e]+/g, "_").replace(/["\\;]/g, "_");
   const contentDisposition = `${options.disposition}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
   return getSignedUrl(
     s3Client(),
     new GetObjectCommand({
       Bucket: requireBucket(),
       Key: key,
-      ResponseContentType: mimeForFormat(options.format, fileName),
+      ResponseContentType: mimeForFormat(options.format, storedName),
       ResponseContentDisposition: contentDisposition,
     }),
     { expiresIn: DOWNLOAD_URL_TTL_SECONDS },
