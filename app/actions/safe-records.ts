@@ -8,6 +8,7 @@ export type { MachineImportPreviewResult } from "./machine-import";
 export async function checkMachineCodeAction(data: Parameters<typeof records.checkMachineCodeAction>[0]) { return runSafeAction("machine.code.check", () => records.checkMachineCodeAction(data)); }
 
 export async function createCompanyAction(data: FormData) { return runSafeAction("company.create", () => records.createCompanyAction(data)); }
+export async function updateCompanyAction(data: FormData) { return runSafeAction("company.update", () => records.updateCompanyAction(data)); }
 export async function createUserAction(data: FormData) { return runSafeAction("user.create", () => records.createUserAction(data)); }
 export async function createMachineAction(data: FormData) { return runSafeAction("machine.create", () => records.createMachineAction(data)); }
 export async function updateMachineAction(data: FormData) { return runSafeAction("machine.update", () => records.updateMachineAction(data)); }

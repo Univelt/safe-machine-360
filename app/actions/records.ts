@@ -99,6 +99,44 @@ export async function createCompanyAction(formData: FormData) {
   redirect("/admin/empresas");
 }
 
+function isCompanyCnpjUniqueConflict(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error) || error.code !== "P2002" || !("meta" in error)) return false;
+  const target = error.meta && typeof error.meta === "object" && "target" in error.meta ? error.meta.target : null;
+  return Array.isArray(target) ? target.includes("cnpj") : typeof target === "string" && target.includes("cnpj");
+}
+
+export async function updateCompanyAction(formData: FormData) {
+  const session = await requireAdmin();
+  const companyId = text(formData, "companyId");
+  const name = text(formData, "name");
+  const legalName = text(formData, "legalName");
+  const cnpj = text(formData, "cnpj");
+  const city = text(formData, "city");
+  const manager = text(formData, "manager");
+  if (!companyId || !name || !legalName || !cnpj || !city || !manager) {
+    throw new UserFacingError("Preencha todos os campos obrigatórios para salvar a empresa.");
+  }
+
+  let company;
+  try {
+    company = await prisma.company.update({
+      where: { id: companyId },
+      data: { name, legalName, cnpj, city, manager },
+      select: { id: true, name: true },
+    });
+  } catch (error) {
+    if (isCompanyCnpjUniqueConflict(error)) {
+      throw new UserFacingError("Este CNPJ já está cadastrado em outra empresa. Confira o número e tente novamente.", "CNPJ_EMPRESA_DUPLICADO");
+    }
+    throw error;
+  }
+
+  await writeAudit(company.id, session.id, "COMPANY_UPDATED", "Company", company.id, `Dados da empresa ${company.name} atualizados.`);
+  revalidatePath("/admin/empresas");
+  revalidatePath("/");
+  redirect("/admin/empresas");
+}
+
 export async function createUserAction(formData: FormData) {
   const session = await requireSession();
   if (!canManageCompany(session)) throw new UserFacingError("Sem permissão para cadastrar usuários.");

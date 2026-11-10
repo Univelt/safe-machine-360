@@ -25,7 +25,7 @@ after(async () => {
 
 test("compacta foto grande antes de gravar e mantém o enquadramento", async () => {
   const source = await detailedJpeg(4200, 1800);
-  const saved = await saveMachinePhotoUpload(new File([source], "prensa.jpg", { type: "image/jpeg" }), "empresa-1", "maquina-1", "foto-1");
+  const saved = await saveMachinePhotoUpload(new File([filePart(source)], "prensa.jpg", { type: "image/jpeg" }), "empresa-1", "maquina-1", "foto-1");
   const stored = await readStoredFile(saved.relativePath);
   const metadata = await sharp(stored).metadata();
 
@@ -37,7 +37,7 @@ test("compacta foto grande antes de gravar e mantém o enquadramento", async () 
 
 test("não amplia foto pequena nem troca o formato", async () => {
   const source = await sharp({ create: { width: 640, height: 480, channels: 3, background: "#245c8a" } }).jpeg({ quality: 92, mozjpeg: true }).toBuffer();
-  const saved = await saveMachinePhotoUpload(new File([source], "detalhe.jpg", { type: "image/jpeg" }), "empresa-1", "maquina-1", "foto-2");
+  const saved = await saveMachinePhotoUpload(new File([filePart(source)], "detalhe.jpg", { type: "image/jpeg" }), "empresa-1", "maquina-1", "foto-2");
   const stored = await readStoredFile(saved.relativePath);
   const metadata = await sharp(stored).metadata();
 
@@ -58,7 +58,7 @@ test("compacta PNG de forma lossless e preserva as dimensões", async () => {
     raw[offset + 2] = (pixel * 7) % 251;
   }
   const source = await sharp(raw, { raw: { width, height, channels: 3 } }).png({ compressionLevel: 0 }).toBuffer();
-  const saved = await saveMachinePhotoUpload(new File([source], "painel.png", { type: "image/png" }), "empresa-1", "maquina-1", "foto-3");
+  const saved = await saveMachinePhotoUpload(new File([filePart(source)], "painel.png", { type: "image/png" }), "empresa-1", "maquina-1", "foto-3");
   const stored = await readStoredFile(saved.relativePath);
   const metadata = await sharp(stored).metadata();
 
@@ -71,19 +71,19 @@ test("compacta PNG de forma lossless e preserva as dimensões", async () => {
 
 test("compacta foto enviada como evidência e mantém documento imagem intacto", async () => {
   const photo = await detailedJpeg(4000, 1200);
-  const evidence = await saveActivityEvidenceUpload(new File([photo], "evidencia.jpg", { type: "image/jpeg" }), "empresa-1", "atividade-1", "anexo-1");
+  const evidence = await saveActivityEvidenceUpload(new File([filePart(photo)], "evidencia.jpg", { type: "image/jpeg" }), "empresa-1", "atividade-1", "anexo-1");
   const storedPhoto = await readStoredFile(evidence.relativePath);
   assert.ok(storedPhoto.length < photo.length);
   assert.equal((await sharp(storedPhoto).metadata()).width, 3840);
 
   const document = await sharp({ create: { width: 80, height: 40, channels: 3, background: "#101820" } }).jpeg().toBuffer();
-  const savedDocument = await saveDocumentUpload(new File([document], "laudo.jpg", { type: "image/jpeg" }), "empresa-1", "documento-1");
+  const savedDocument = await saveDocumentUpload(new File([filePart(document)], "laudo.jpg", { type: "image/jpeg" }), "empresa-1", "documento-1");
   assert.deepEqual(await readStoredFile(savedDocument.relativePath), document);
 });
 
 test("mantém foto WEBP legível e nas dimensões originais", async () => {
   const source = await sharp({ create: { width: 400, height: 300, channels: 3, background: "#55aa77" } }).webp({ quality: 100 }).toBuffer();
-  const saved = await saveMachinePhotoUpload(new File([source], "selo.webp", { type: "image/webp" }), "empresa-1", "maquina-1", "foto-5");
+  const saved = await saveMachinePhotoUpload(new File([filePart(source)], "selo.webp", { type: "image/webp" }), "empresa-1", "maquina-1", "foto-5");
   const metadata = await sharp(await readStoredFile(saved.relativePath)).metadata();
   assert.equal(metadata.format, "webp");
   assert.equal(metadata.width, 400);
@@ -92,7 +92,7 @@ test("mantém foto WEBP legível e nas dimensões originais", async () => {
 
 test("rejeita arquivo que não é uma imagem válida", async () => {
   await assert.rejects(
-    () => saveMachinePhotoUpload(new File([Buffer.from("nao-e-imagem")], "foto.jpg", { type: "image/jpeg" }), "empresa-1", "maquina-1", "foto-4"),
+    () => saveMachinePhotoUpload(new File([filePart(Buffer.from("nao-e-imagem"))], "foto.jpg", { type: "image/jpeg" }), "empresa-1", "maquina-1", "foto-4"),
     /Não foi possível processar a foto/,
   );
 });
@@ -109,4 +109,10 @@ async function detailedJpeg(width: number, height: number) {
     }
   }
   return sharp(raw, { raw: { width, height, channels: 3 } }).jpeg({ quality: 97 }).toBuffer();
+}
+
+function filePart(data: Uint8Array<ArrayBufferLike>): Uint8Array<ArrayBuffer> {
+  const copy = new Uint8Array(data.byteLength);
+  copy.set(data);
+  return copy;
 }

@@ -117,6 +117,7 @@ export const roleLabels: Record<UserRole, string> = {
 
 export const auditActionLabels: Record<string, string> = {
   COMPANY_CREATED: "Empresa cadastrada",
+  COMPANY_UPDATED: "Empresa atualizada",
   USER_CREATED: "Usuário cadastrado",
   MACHINE_CREATED: "Máquina cadastrada",
   MACHINE_UPDATED: "Máquina atualizada",
