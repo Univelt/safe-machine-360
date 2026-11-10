@@ -75,6 +75,7 @@ enum DocumentKind {
   LAUDO
   ART
   APR
+  PROJETO_CONCEITUAL
   OUTRO
 }
 

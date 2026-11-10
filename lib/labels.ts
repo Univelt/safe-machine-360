@@ -88,6 +88,7 @@ export const documentKindLabels: Record<DocumentKind, string> = {
   LAUDO: "Laudo",
   ART: "ART",
   APR: "APR",
+  PROJETO_CONCEITUAL: "Projeto conceitual",
   OUTRO: "Outro",
 };
 
